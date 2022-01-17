@@ -1,8 +1,26 @@
-// use ndarray::prelude::*;
 use ndarray::{Array, Array2};
 
-type Board = Array2<u8>;
+#[derive(Debug, PartialEq)]
+struct Board(Array2<u8>);
+
 type Pt = [usize; 2];
+
+impl Board {
+    fn new<I>(iter: I, shape: &(usize, usize)) -> Self
+    where
+        I: IntoIterator<Item = u8>,
+    {
+        Board(Array::from_iter(iter).into_shape(*shape).unwrap())
+    }
+
+    fn permute(self: &Self, pt_1: &Pt, pt_2: &Pt) -> Self {
+        let board = &self.0;
+        let mut output_board = board.clone();
+        output_board[*pt_1] = board[*pt_2];
+        output_board[*pt_2] = board[*pt_1];
+        Board(output_board)
+    }
+}
 
 fn main() {
     // This the width and height of the tile game we're using.
@@ -10,18 +28,11 @@ fn main() {
     let n_elts = (w * h) as u8;
     println!("Board size: {}x{}", w, h);
 
-    let a: Board = Array::from_iter(0..n_elts).into_shape((w, h)).unwrap();
+    let a = Board::new(0..n_elts, &(w, h));
 
     println!("{:?}", a);
+    println!("It worked!");
 
-    let a1: Board = Array::from_iter([0, 1, 2, 3]).into_shape((2, 2)).unwrap();
-    let a2: Board = Array::from_iter([1, 0, 2, 3]).into_shape((2, 2)).unwrap();
-    let a3: Board = permute(&a1, &[0, 0], &[0, 1]);
-    println!("{}", a1);
-    println!("{}", a2);
-    println!("{}", a3);
-    assert_eq!(a2, a3);
-    println!("All tests passed!");
     // assert_eq!(a.ndim(), 1); // get the number of dimensions of array a
     // assert_eq!(a.len(), n_elts as usize); // get the number of elements in array a
     // assert_eq!(a.shape(), [n_elts as usize]); // get the shape of array a
@@ -32,15 +43,10 @@ fn main() {
 
 // fn new(dim: (usize, usize)) -> Self {}
 
-fn permute(board: &Board, pt_1: &Pt, pt_2: &Pt) -> Board {
-    let mut output_board = board.clone();
-    output_board[*pt_1] = board[*pt_2];
-    output_board[*pt_2] = board[*pt_1];
-    output_board
-}
-
 #[test]
 fn test_permute() {
-    let a1: Board = Array::from_iter([0, 1, 2, 3]).into_shape((2, 2)).unwrap();
-    println!("{}", a1);
+    let a1 = Board::new([0, 1, 2, 3], &(2, 2));
+    let a2 = Board::new([1, 0, 2, 3], &(2, 2));
+    let a3 = a1.permute(&[0, 0], &[0, 1]);
+    assert_eq!(a2, a3);
 }
