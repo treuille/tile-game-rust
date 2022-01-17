@@ -1,7 +1,7 @@
 // use ndarray::prelude::*;
-use ndarray::{Array, Ix2};
+use ndarray::{Array, Array2};
 
-type Board = Array<u8, Ix2>;
+type Board = Array2<u8>;
 type Pt = [usize; 2];
 
 fn main() {
