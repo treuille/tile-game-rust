@@ -65,8 +65,9 @@ fn main() {
 }
 
 fn find_all_boards_iteratively(board: Board) -> usize {
-    let mut unprocessed_boards = vec![Rc::new(board)];
-    let mut all_boards: HashSet<Rc<Board>> = unprocessed_boards.clone().into_iter().collect();
+    let board = Rc::new(board);
+    let mut unprocessed_boards: Vec<Rc<Board>> = [board.clone()].to_vec();
+    let mut all_boards: HashSet<Rc<Board>> = [board.clone()].into_iter().collect();
 
     while let Some(board) = unprocessed_boards.pop() {
         for permuted_board in board.slide_iter().map(Rc::new) {
