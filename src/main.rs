@@ -1,8 +1,8 @@
 use ndarray::{Array, Array2};
 use std::collections::HashSet;
-use std::rc::Rc;
+// use std::rc::Rc;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct Board(Array2<u8>);
 
 type Pt = [usize; 2];
@@ -65,12 +65,11 @@ fn main() {
 }
 
 fn find_all_boards_iteratively(board: Board) -> usize {
-    let board = Rc::new(board);
-    let mut unprocessed_boards: Vec<Rc<Board>> = [board.clone()].to_vec();
-    let mut all_boards: HashSet<Rc<Board>> = [board.clone()].into_iter().collect();
+    let mut unprocessed_boards: Vec<Board> = [board.clone()].to_vec();
+    let mut all_boards: HashSet<Board> = [board.clone()].into_iter().collect();
 
     while let Some(board) = unprocessed_boards.pop() {
-        for permuted_board in board.slide_iter().map(Rc::new) {
+        for permuted_board in board.slide_iter() {
             if !all_boards.contains(&permuted_board) {
                 unprocessed_boards.push(permuted_board.clone());
                 all_boards.insert(permuted_board.clone());
