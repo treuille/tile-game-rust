@@ -1,6 +1,8 @@
 use ndarray::{Array, Array2};
+use std::collections::HashSet;
+use std::rc::Rc;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 struct Board(Array2<u8>);
 
 type Pt = [usize; 2];
@@ -20,6 +22,36 @@ impl Board {
         output_board[*pt_2] = board[*pt_1];
         Board(output_board)
     }
+
+    fn slide_iter(self: &Self) -> impl Iterator<Item = Self> + '_ {
+        // Extract the board and its dimensions.
+        let board = &self.0;
+        let w = board.shape()[0] as i32;
+        let h = board.shape()[1] as i32;
+
+        // The location of the zero in the board.
+        let (x1, y1): (i32, i32) = board
+            .indexed_iter()
+            .filter_map(|((i, j), x)| match x {
+                0 => Some((i as i32, j as i32)),
+                _ => None,
+            })
+            .next()
+            .unwrap();
+
+        let offsets: [(i32, i32); 4] = [(-1, 0), (1, 0), (0, -1), (0, 1)];
+        offsets.into_iter().filter_map(move |(dx, dy)| {
+            let x2: i32 = x1 + dx;
+            let y2: i32 = y1 + dy;
+            if x2 >= 0 && x2 < w && y2 >= 0 && y2 < h {
+                let pt1: Pt = [x1 as usize, y1 as usize];
+                let pt2: Pt = [x2 as usize, y2 as usize];
+                Some(self.permute(&pt1, &pt2))
+            } else {
+                None
+            }
+        })
+    }
 }
 
 fn main() {
@@ -28,20 +60,32 @@ fn main() {
     let n_elts = (w * h) as u8;
     println!("Board size: {}x{}", w, h);
 
-    let a = Board::new(0..n_elts, &(w, h));
-
-    println!("{:?}", a);
-    println!("It worked!");
-
-    // assert_eq!(a.ndim(), 1); // get the number of dimensions of array a
-    // assert_eq!(a.len(), n_elts as usize); // get the number of elements in array a
-    // assert_eq!(a.shape(), [n_elts as usize]); // get the shape of array a
-    // assert_eq!(a.is_empty(), false); // check if the array has zero elements
+    let board = Board::new(0..n_elts, &(w, h));
+    let n_solns = find_all_boards_iteratively(board);
+    println!("There are {} solutions.", n_solns);
 }
 
-// fn side_iter(board: Array::<u8,
+fn find_all_boards_iteratively(board: Board) -> usize {
+    let mut unprocessed_boards = vec![Rc::new(board)];
+    let mut all_boards: HashSet<Rc<Board>> = unprocessed_boards.clone().into_iter().collect();
 
-// fn new(dim: (usize, usize)) -> Self {}
+    while let Some(board) = unprocessed_boards.pop() {
+        for permuted_board in board.slide_iter().map(Rc::new) {
+            if !all_boards.contains(&permuted_board) {
+                unprocessed_boards.push(permuted_board.clone());
+                all_boards.insert(permuted_board.clone());
+                if all_boards.len() % 10000 == 0 {
+                    println!(
+                        "Processed {} boards with {} to go.",
+                        all_boards.len(),
+                        unprocessed_boards.len()
+                    );
+                }
+            }
+        }
+    }
+    all_boards.len()
+}
 
 #[test]
 fn test_permute() {
