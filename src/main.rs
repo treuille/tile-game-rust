@@ -32,11 +32,10 @@ impl Board {
         // The location of the zero in the board.
         let (x1, y1): (i32, i32) = board
             .indexed_iter()
-            .filter_map(|((i, j), x)| match x {
+            .find_map(|((i, j), x)| match x {
                 0 => Some((i as i32, j as i32)),
                 _ => None,
             })
-            .next()
             .unwrap();
 
         let offsets: [(i32, i32); 4] = [(-1, 0), (1, 0), (0, -1), (0, 1)];
