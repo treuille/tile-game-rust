@@ -73,13 +73,13 @@ fn find_all_boards_iteratively(board: Board) -> usize {
             if !all_boards.contains(&permuted_board) {
                 unprocessed_boards.push(permuted_board.clone());
                 all_boards.insert(permuted_board.clone());
-                if all_boards.len() % 10000 == 0 {
-                    println!(
-                        "Processed {} boards with {} to go.",
-                        all_boards.len(),
-                        unprocessed_boards.len()
-                    );
-                }
+                // if all_boards.len() % 10000 == 0 {
+                //     println!(
+                //         "Processed {} boards with {} to go.",
+                //         all_boards.len(),
+                //         unprocessed_boards.len()
+                //     );
+                // }
             }
         }
     }
