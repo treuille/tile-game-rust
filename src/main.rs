@@ -1,6 +1,7 @@
 use ndarray::{Array, Array2};
 use std::collections::HashSet;
-// use std::rc::Rc;
+
+use out_of_core;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct Board(Array2<u8>);
@@ -54,14 +55,17 @@ impl Board {
 }
 
 fn main() {
-    // This the width and height of the tile game we're using.
-    let (w, h) = (3, 3);
-    let n_elts = (w * h) as u8;
-    println!("Board size: {}x{}", w, h);
+    out_of_core.say_hello();
+    panic!("say_hello()");
 
-    let board = Board::new(0..n_elts, &(w, h));
-    let n_solns = find_all_boards_iteratively(board);
-    println!("There are {} solutions.", n_solns);
+    // // This the width and height of the tile game we're using.
+    // let (w, h) = (3, 3);
+    // let n_elts = (w * h) as u8;
+    // println!("Board size: {}x{}", w, h);
+
+    // let board = Board::new(0..n_elts, &(w, h));
+    // let n_solns = find_all_boards_iteratively(board);
+    // println!("There are {} solutions.", n_solns);
 }
 
 fn find_all_boards_iteratively(board: Board) -> usize {
