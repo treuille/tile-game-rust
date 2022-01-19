@@ -1,7 +1,7 @@
 use ndarray::{Array, Array2};
 use std::collections::HashSet;
 
-use out_of_core;
+use tile_game::out_of_core;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct Board(Array2<u8>);
@@ -55,7 +55,7 @@ impl Board {
 }
 
 fn main() {
-    out_of_core.say_hello();
+    out_of_core::say_hello();
     panic!("say_hello()");
 
     // // This the width and height of the tile game we're using.
