@@ -3,12 +3,6 @@ use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 
-fn calculate_hash<T: Hash>(t: &T) -> u64 {
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
-}
-
 /// A set of integers.
 trait HashedItemSet {
     type Item: Hash;
@@ -18,6 +12,13 @@ trait HashedItemSet {
 
     /// Inserts a usize into this struct.
     fn insert(&mut self, item: &Self::Item);
+
+    /// Calculates the hash for an item.
+    fn hash(item: &Self::Item) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        item.hash(&mut hasher);
+        hasher.finish()
+    }
 }
 
 /// A set of integers held in memory.
@@ -43,16 +44,14 @@ where
 {
     type Item = T;
 
-    /// Returns true if the set contains this integer.
+    /// Returns true if the set contains this item.
     fn contains(&self, item: &Self::Item) -> bool {
-        let the_hash = calculate_hash(item);
-        self.hashes.contains(&the_hash)
+        self.hashes.contains(&Self::hash(item))
     }
 
-    /// Inserts a usize into this struct.
+    /// Inserts an item into the set
     fn insert(&mut self, item: &Self::Item) {
-        let the_hash: u64 = calculate_hash(item);
-        self.hashes.insert(the_hash);
+        self.hashes.insert(Self::hash(item));
     }
 }
 
