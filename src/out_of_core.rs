@@ -55,6 +55,10 @@ where
     }
 }
 
+struct OutOfCoreHashItemSet<T> {
+    _hashes: HashSet<T>,
+}
+
 // #[cfg(test)]
 pub mod test {
     use super::*;
