@@ -14,7 +14,16 @@ pub trait IntSet {
 }
 
 /// A set of integers held in memory.
+
+#[derive(Default)]
 pub struct InMemoryIntSet(HashSet<usize>);
+
+impl InMemoryIntSet {
+    /// Contructor
+    pub fn new() -> Self {
+        Self(HashSet::<usize>::new())
+    }
+}
 
 impl IntSet for InMemoryIntSet {
     /// Returns true if the set contains this integer.
