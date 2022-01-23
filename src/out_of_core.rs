@@ -40,3 +40,18 @@ impl IntSet for InMemoryIntSet {
     /// Inserts a usize into this struct.
     fn insert(&mut self, item: usize) {}
 }
+
+// #[cfg(test)]
+pub mod test {
+    use super::*;
+
+    // #[test]
+    pub fn scratchpad() {
+        println!("Testing scratchpad.");
+        for i in 0..40 {
+            let hash_i = calculate_hash(&i);
+            println!("{i} -> {hash_i}");
+        }
+        println!("Finished testing scratchpad!");
+    }
+}
