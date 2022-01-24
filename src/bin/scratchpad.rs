@@ -1,6 +1,6 @@
 // use tile_game::out_of_core::{calculate_hash, InMemoryIntSet, IntSet};
-use tile_game::out_of_core;
+use tile_game::out_of_core::test;
 
 fn main() {
-    out_of_core::scratchpad();
+    test::scratchpad();
 }

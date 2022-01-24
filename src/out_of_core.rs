@@ -4,17 +4,15 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 
 /// A set of integers.
-trait HashedItemSet {
-    type Item: Hash;
-
+trait HashedItemSet<T: Hash> {
     /// Returns true if the set contains this integer.
-    fn contains(&self, item: &Self::Item) -> bool;
+    fn contains(&self, item: &T) -> bool;
 
     /// Inserts a usize into this struct.
-    fn insert(&mut self, item: &Self::Item);
+    fn insert(&mut self, item: &T);
 
     /// Calculates the hash for an item.
-    fn hash(item: &Self::Item) -> u64 {
+    fn hash(item: &T) -> u64 {
         let mut hasher = DefaultHasher::new();
         item.hash(&mut hasher);
         hasher.finish()
@@ -24,7 +22,11 @@ trait HashedItemSet {
 /// A set of integers held in memory.
 #[derive(Debug)]
 struct InMemoryHashedItemSet<T: Hash> {
+    // Where we store the hashes of the elements.
     hashes: HashSet<u64>,
+
+    // 0-sized variable that makes this type behave as if it
+    // contained items of type T.
     _phantom: PhantomData<T>,
 }
 
@@ -38,60 +40,62 @@ impl<T: Hash> InMemoryHashedItemSet<T> {
     }
 }
 
-impl<T: Hash> HashedItemSet for InMemoryHashedItemSet<T> {
-    type Item = T;
-
+impl<T: Hash> HashedItemSet<T> for InMemoryHashedItemSet<T> {
     /// Returns true if the set contains this item.
-    fn contains(&self, item: &Self::Item) -> bool {
+    fn contains(&self, item: &T) -> bool {
         self.hashes.contains(&Self::hash(item))
     }
 
     /// Inserts an item into the set
-    fn insert(&mut self, item: &Self::Item) {
+    fn insert(&mut self, item: &T) {
         self.hashes.insert(Self::hash(item));
     }
 }
 
-struct OutOfCoreHashItemSet<T> {
-    _hashes: HashSet<T>,
-}
+// struct OutOfCoreHashItemSet<T> {
+//     _hashes: HashSet<T>,
+// }
 
 // #[cfg(test)]
 pub mod test {
     use super::*;
 
+    pub fn scratchpad() {
+        let mut hash_items = InMemoryHashedItemSet::new();
+        use std::mem;
+        println!("Size of hashes: {}", mem::size_of_val(&hash_items.hashes));
+        println!(
+            "Size of _phantom: {}",
+            mem::size_of_val(&hash_items._phantom)
+        );
+
+        for c in ('a'..='z').step_by(2) {
+            hash_items.insert(&c);
+        }
+
+        for (i, c) in ('a'..='z').enumerate() {
+            let contains_c = hash_items.contains(&c);
+            println!("{i} : '{c}' in hash_items : {contains_c}");
+            match i % 2 {
+                0 => assert!(hash_items.contains(&c)),
+                _ => assert!(!hash_items.contains(&c)),
+            }
+        }
+    }
+
     #[test]
     pub fn test_in_memory_hashed_item_set() {
         let mut hash_items = InMemoryHashedItemSet::new();
 
-        hash_items.insert(&'a');
-        hash_items.insert(&'b');
-        hash_items.insert(&'z');
+        for c in ('a'..='z').step_by(2) {
+            hash_items.insert(&c);
+        }
 
-        assert!(hash_items.contains(&'a'), "Should contain a");
-        assert!(hash_items.contains(&'b'), "Should contain b");
-        assert!(!hash_items.contains(&'c'), "Shouldn't contain c");
-        assert!(!hash_items.contains(&'d'), "Shouldn't contain d");
+        for (i, c) in ('a'..='z').enumerate() {
+            match i % 2 {
+                0 => assert!(hash_items.contains(&c)),
+                _ => assert!(!hash_items.contains(&c)),
+            }
+        }
     }
-}
-
-pub fn scratchpad() {
-    println!("Testing scratchpad.");
-    let mut hash_items = InMemoryHashedItemSet::new();
-    hash_items.insert(&'a');
-    hash_items.insert(&'b');
-    hash_items.insert(&'z');
-    println!("hash_items: {hash_items:?}");
-
-    // for i in TEST_STR.chars().step_by(2) {
-    //     hash_items.insert(&i);
-    // }
-    for i in "abcd".chars() {
-        let contains_i = hash_items.contains(&i);
-        println!("{i} in hash_items : {contains_i}");
-    }
-    assert!(hash_items.contains(&'a'));
-    assert!(hash_items.contains(&'b'));
-    assert!(!hash_items.contains(&'c'));
-    assert!(!hash_items.contains(&'d'));
 }
