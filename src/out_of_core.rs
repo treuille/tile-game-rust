@@ -1,7 +1,9 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
+use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
+use std::process::Command;
 
 /// A set of integers.
 trait HashedItemSet<T: Hash> {
@@ -31,7 +33,8 @@ struct InMemoryHashedItemSet<T: Hash> {
 }
 
 impl<T: Hash> InMemoryHashedItemSet<T> {
-    /// Contructor
+    /// Constructor
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             hashes: HashSet::new(),
@@ -52,16 +55,68 @@ impl<T: Hash> HashedItemSet<T> for InMemoryHashedItemSet<T> {
     }
 }
 
-// struct OutOfCoreHashItemSet<T> {
-//     _hashes: HashSet<T>,
-// }
+/// Runs a command on the command line.
+fn run_command<S: AsRef<OsStr>>(cmd: S) {
+    Command::new("sh")
+        .arg::<&str>("-c")
+        .arg(cmd)
+        .spawn()
+        .unwrap();
+}
+
+/// Stores a large group of elements by hash, even if they can't fit in main memory.
+struct OutOfCoreHashedItemSet<T: Hash> {
+    // Where we store the hashes of the elements.
+    hashes: HashSet<u64>,
+
+    // Maximum number of elements in memory
+    max_elts: usize,
+
+    // 0-sized variable that makes this type behave as if it
+    // contained items of type T.
+    _phantom: PhantomData<T>,
+}
+
+impl<T: Hash> OutOfCoreHashedItemSet<T> {
+    /// Contructor
+    fn new(max_elts: usize) -> Self {
+        run_command(format!("rm -rfv {}/*", Self::CACHE_PATH));
+        run_command(format!("mkdir -p {}", Self::CACHE_PATH));
+
+        Self {
+            hashes: HashSet::new(),
+            max_elts,
+            _phantom: PhantomData,
+        }
+    }
+
+    // Where we store the data
+    const CACHE_PATH: &'static str = "cache/item_set";
+}
+
+impl<T: Hash> HashedItemSet<T> for OutOfCoreHashedItemSet<T> {
+    /// Returns true if the set contains this item.
+    fn contains(&self, item: &T) -> bool {
+        false
+    }
+
+    /// Inserts an item into the set
+    fn insert(&mut self, item: &T) {
+        self.hashes.insert(Self::hash(item));
+
+        // TODO: This is were I need to start implementing the memory map.
+        if self.hashes.len() >= self.max_elts {
+            panic!("There are now {} elements!", self.hashes.len());
+        }
+    }
+}
 
 // #[cfg(test)]
 pub mod test {
     use super::*;
 
     pub fn scratchpad() {
-        let mut hash_items = InMemoryHashedItemSet::new();
+        let mut hash_items = OutOfCoreHashedItemSet::new(10);
         use std::mem;
         println!("Size of hashes: {}", mem::size_of_val(&hash_items.hashes));
         println!(
