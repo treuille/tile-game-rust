@@ -1,9 +1,12 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
 use std::ffi::OsStr;
+use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
+use std::path::PathBuf;
 use std::process::Command;
+use std::str::FromStr;
 
 /// A set of integers.
 trait HashedItemSet<T: Hash> {
@@ -29,7 +32,7 @@ struct InMemoryHashedItemSet<T: Hash> {
 
     // 0-sized variable that makes this type behave as if it
     // contained items of type T.
-    _phantom: PhantomData<T>,
+    phantom: PhantomData<T>,
 }
 
 impl<T: Hash> InMemoryHashedItemSet<T> {
@@ -38,7 +41,7 @@ impl<T: Hash> InMemoryHashedItemSet<T> {
     pub fn new() -> Self {
         Self {
             hashes: HashSet::new(),
-            _phantom: PhantomData,
+            phantom: PhantomData,
         }
     }
 }
@@ -72,9 +75,12 @@ struct OutOfCoreHashedItemSet<T: Hash> {
     // Maximum number of elements in memory
     max_elts: usize,
 
+    // The memory maps we use to back this data structure.
+    maps: Vec<()>,
+
     // 0-sized variable that makes this type behave as if it
-    // contained items of type T.
-    _phantom: PhantomData<T>,
+    // contained i tems of type T.
+    phantom: PhantomData<T>,
 }
 
 impl<T: Hash> OutOfCoreHashedItemSet<T> {
@@ -86,7 +92,8 @@ impl<T: Hash> OutOfCoreHashedItemSet<T> {
         Self {
             hashes: HashSet::new(),
             max_elts,
-            _phantom: PhantomData,
+            maps: Vec::new(),
+            phantom: PhantomData,
         }
     }
 
@@ -106,7 +113,24 @@ impl<T: Hash> HashedItemSet<T> for OutOfCoreHashedItemSet<T> {
 
         // TODO: This is were I need to start implementing the memory map.
         if self.hashes.len() >= self.max_elts {
-            panic!("There are now {} elements!", self.hashes.len());
+            println!("There are now {} elements!", self.hashes.len());
+            // Create the file
+            let mut path = PathBuf::from_str(Self::CACHE_PATH).unwrap();
+            path.push(format!("{:05}.dat", self.maps.len()));
+            let file = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(&path)
+                .unwrap();
+            println!(
+                "Creating a file of length {}",
+                self.max_elts * std::mem::size_of::<u64>()
+            );
+            file.set_len((self.max_elts * std::mem::size_of::<u64>()) as u64)
+                .unwrap();
+            println!("Creating cache file: {path:?}");
+            panic!("adding the memory map");
         }
     }
 }
@@ -117,12 +141,9 @@ pub mod test {
 
     pub fn scratchpad() {
         let mut hash_items = OutOfCoreHashedItemSet::new(10);
-        use std::mem;
-        println!("Size of hashes: {}", mem::size_of_val(&hash_items.hashes));
-        println!(
-            "Size of _phantom: {}",
-            mem::size_of_val(&hash_items._phantom)
-        );
+        // use std::mem;
+        // println!("Size of hashes: {}", mem::size_of_val(&hash_items.hashes));
+        // println!("Size of phantom: {}", mem::size_of_val(&hash_items.phantom));
 
         for c in ('a'..='z').step_by(2) {
             hash_items.insert(&c);
