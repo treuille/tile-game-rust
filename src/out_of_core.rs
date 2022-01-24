@@ -63,28 +63,6 @@ struct OutOfCoreHashItemSet<T> {
 pub mod test {
     use super::*;
 
-    // #[test]
-    pub fn scratchpad() {
-        println!("Testing scratchpad.");
-        let mut hash_items = InMemoryHashedItemSet::new();
-        hash_items.insert(&'a');
-        hash_items.insert(&'b');
-        hash_items.insert(&'z');
-        println!("hash_items: {hash_items:?}");
-
-        // for i in TEST_STR.chars().step_by(2) {
-        //     hash_items.insert(&i);
-        // }
-        for i in "abcd".chars() {
-            let contains_i = hash_items.contains(&i);
-            println!("{i} in hash_items : {contains_i}");
-        }
-        assert!(hash_items.contains(&'a'));
-        assert!(hash_items.contains(&'b'));
-        assert!(!hash_items.contains(&'c'));
-        assert!(!hash_items.contains(&'d'));
-    }
-
     #[test]
     pub fn test_in_memory_hashed_item_set() {
         let mut hash_items = InMemoryHashedItemSet::new();
@@ -98,4 +76,25 @@ pub mod test {
         assert!(!hash_items.contains(&'c'), "Shouldn't contain c");
         assert!(!hash_items.contains(&'d'), "Shouldn't contain d");
     }
+}
+
+pub fn scratchpad() {
+    println!("Testing scratchpad.");
+    let mut hash_items = InMemoryHashedItemSet::new();
+    hash_items.insert(&'a');
+    hash_items.insert(&'b');
+    hash_items.insert(&'z');
+    println!("hash_items: {hash_items:?}");
+
+    // for i in TEST_STR.chars().step_by(2) {
+    //     hash_items.insert(&i);
+    // }
+    for i in "abcd".chars() {
+        let contains_i = hash_items.contains(&i);
+        println!("{i} in hash_items : {contains_i}");
+    }
+    assert!(hash_items.contains(&'a'));
+    assert!(hash_items.contains(&'b'));
+    assert!(!hash_items.contains(&'c'));
+    assert!(!hash_items.contains(&'d'));
 }
