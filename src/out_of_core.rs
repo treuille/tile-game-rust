@@ -25,7 +25,7 @@ trait HashedItemSet {
 #[derive(Debug)]
 struct InMemoryHashedItemSet<T: Hash> {
     hashes: HashSet<u64>,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<T>, // TODO: make this a reference!
 }
 
 impl<T: Hash> InMemoryHashedItemSet<T> {
