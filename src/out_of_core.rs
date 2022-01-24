@@ -38,10 +38,7 @@ impl<T: Hash> InMemoryHashedItemSet<T> {
     }
 }
 
-impl<T: Hash> HashedItemSet for InMemoryHashedItemSet<T>
-where
-    T: Hash,
-{
+impl<T: Hash> HashedItemSet for InMemoryHashedItemSet<T> {
     type Item = T;
 
     /// Returns true if the set contains this item.
