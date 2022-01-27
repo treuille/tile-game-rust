@@ -76,10 +76,11 @@ struct OutOfCoreHashedItemSet<T: Hash> {
     hashes: HashSet<u64>,
 
     // The memory map we use to back this data structure.
-    mmap: TempMemMap<T>,
+    mmap: BigU64Array,
+
     // 0-sized variable that makes this type behave as if it
     // contained i tems of type T.
-    // phantom: PhantomData<T>,
+    phantom: PhantomData<T>,
 }
 
 impl<T: Hash> OutOfCoreHashedItemSet<T> {
@@ -90,8 +91,8 @@ impl<T: Hash> OutOfCoreHashedItemSet<T> {
 
         Ok(Self {
             hashes: HashSet::new(),
-            mmap: TempMemMap::<T>::new(100)?,
-            // phantom: PhantomData,
+            mmap: BigU64Array::new(100)?,
+            phantom: PhantomData,
         })
     }
 
@@ -144,8 +145,8 @@ impl<T: Hash> HashedItemSet<T> for OutOfCoreHashedItemSet<T> {
     }
 }
 
-/// A Memory map backed by a temporary file.
-struct TempMemMap<T> {
+/// A big array of u64s backed by a large memory-mapped temporary file.
+struct BigU64Array {
     // The filename of the memory map.
     filename: Temp,
 
@@ -154,24 +155,19 @@ struct TempMemMap<T> {
 
     // The memory map itself.
     mmap: MmapMut,
-
-    // 0-sized variable that makes this type behave as if it
-    // contained i tems of type T.
-    phantom: PhantomData<T>,
 }
 
-impl<T> TempMemMap<T> {
+impl BigU64Array {
     fn new(n_elts: usize) -> io::Result<Self> {
         let filename = Temp::new_file()?;
         let file = OpenOptions::new().read(true).write(true).open(&filename)?;
         file.set_len((n_elts * std::mem::size_of::<u64>()) as u64)?;
         let mmap = unsafe { MmapMut::map_mut(&file)? };
         println!("Created a memory map with: {:?}", file);
-        Ok(Self {
+        Ok(BigU64Array {
             filename,
             // file,
             mmap,
-            phantom: PhantomData,
         })
     }
 }
