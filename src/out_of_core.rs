@@ -106,26 +106,14 @@ impl<T: Hash> HashedItemSet<T> for OutOfCoreHashedItemSet<T> {
         self.hash_cache.insert(item_hash);
         if self.hash_cache.len() == self.cache_size {
             println!("Maximum cache size {} reached.", self.cache_size);
-            let old_cache = mem::replace(
-                &mut self.hash_cache,
-                HashSet::with_capacity(self.cache_size),
-            );
-            let mut new_store: BigU64Array;
-            match &self.hash_store {
-                Some(old_store) => {
-                    let old_store_len = old_store.len();
-                    let new_store_len = old_store_len + self.cache_size;
-                    new_store = BigU64Array::new(new_store_len).unwrap();
-                    new_store[..old_store_len].copy_from_slice(old_store);
-                    new_store[old_store_len..]
-                        .copy_from_slice(&old_cache.into_iter().collect::<Vec<_>>());
-                }
-                None => {
-                    new_store = BigU64Array::new(self.cache_size).unwrap();
-                    new_store.copy_from_slice(&old_cache.into_iter().collect::<Vec<_>>());
-                }
+            let old_store_len = self.hash_store.as_ref().map_or(0, |s| s.len());
+            let mut new_store = BigU64Array::new(old_store_len + self.cache_size).unwrap();
+            if let Some(old_store) = &self.hash_store {
+                new_store[..old_store_len].copy_from_slice(&old_store);
             }
-
+            for (i, item_hash) in self.hash_cache.drain().enumerate() {
+                new_store[old_store_len + i] = item_hash;
+            }
             new_store.sort();
             println!("cache size: {}", self.hash_cache.len());
             println!("store size: {}", new_store.len());
@@ -136,13 +124,13 @@ impl<T: Hash> HashedItemSet<T> for OutOfCoreHashedItemSet<T> {
 
 /// A big array of u64s backed by a large memory-mapped temporary file.
 struct BigU64Array {
-    // The memory map itself.
+    /// The memory map itself.
     mmap: MmapMut,
 
-    // The file that holds the memory map.
+    /// The file that holds the memory map.
     file: File,
 
-    // The filename of the memory map.
+    /// The filename of the memory map.
     filename: Temp,
 }
 
@@ -197,7 +185,7 @@ pub mod test {
     use super::*;
 
     pub fn scratchpad() {
-        let mut hash_items = OutOfCoreHashedItemSet::new(5);
+        let mut hash_items = OutOfCoreHashedItemSet::new(3);
         // use std::mem;
         // println!("Size of hashes: {}", mem::size_of_val(&hash_items.hashes));
         // println!("Size of phantom: {}", mem::size_of_val(&hash_items.phantom));
