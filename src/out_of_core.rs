@@ -7,6 +7,7 @@ use std::fs::{File, OpenOptions};
 use std::hash::{Hash, Hasher};
 use std::io;
 use std::marker::PhantomData;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -89,9 +90,12 @@ impl<T: Hash> OutOfCoreHashedItemSet<T> {
         // run_command(format!("rm -rfv {}/*", Self::CACHE_PATH));
         // run_command(format!("mkdir -p {}", Self::CACHE_PATH));
 
+        let mmap = BigU64Array::new(100)?;
+        println!("The deref has {} elts", mmap.len());
+
         Ok(Self {
             hashes: HashSet::new(),
-            mmap: BigU64Array::new(100)?,
+            mmap: mmap,
             phantom: PhantomData,
         })
     }
@@ -147,14 +151,14 @@ impl<T: Hash> HashedItemSet<T> for OutOfCoreHashedItemSet<T> {
 
 /// A big array of u64s backed by a large memory-mapped temporary file.
 struct BigU64Array {
-    // The filename of the memory map.
-    filename: Temp,
-
-    // // The file that holds the memory map.
-    // file: File,
-
     // The memory map itself.
     mmap: MmapMut,
+
+    // The file that holds the memory map.
+    file: File,
+
+    // The filename of the memory map.
+    filename: Temp,
 }
 
 impl BigU64Array {
@@ -163,12 +167,31 @@ impl BigU64Array {
         let file = OpenOptions::new().read(true).write(true).open(&filename)?;
         file.set_len((n_elts * std::mem::size_of::<u64>()) as u64)?;
         let mmap = unsafe { MmapMut::map_mut(&file)? };
-        println!("Created a memory map with: {:?}", file);
-        Ok(BigU64Array {
+        let array = BigU64Array {
             filename,
-            // file,
+            file,
             mmap,
-        })
+        };
+        assert_eq!(array.len(), n_elts);
+        println!(
+            "Created BigU64Array of size {} in {:?} ",
+            n_elts, array.filename.to_path_buf()
+        );
+        Ok(array)
+    }
+}
+
+impl Deref for BigU64Array {
+    type Target = [u64];
+
+    fn deref(&self) -> &Self::Target {
+        let (align_left, u64_array, align_right) = unsafe { self.mmap.align_to::<u64>() };
+        println!("align_left.len(): {}", align_left.len());
+        println!("u64_array.len(): {}", u64_array.len());
+        println!("align_right.len(): {}", align_right.len());
+        assert_eq!(align_left.len(), 0);
+        assert_eq!(align_right.len(), 0);
+        u64_array
     }
 }
 
