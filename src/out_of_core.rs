@@ -6,29 +6,30 @@ use std::fs::{File, OpenOptions};
 use std::hash::{Hash, Hasher};
 use std::io;
 use std::marker::PhantomData;
-use std::mem;
 use std::ops::{Deref, DerefMut};
 
 // temp_file is cleaned from the fs here
-/// A set of integers.
-trait HashedItemSet<T: Hash> {
-    /// Returns true if the set contains this integer.
+/// A set of items, stored by their hash values.
+pub trait HashedItemSet<T: Hash> {
+    /// Returns true if the set contains this item (up to hash collisions).
     fn contains(&self, item: &T) -> bool;
 
-    /// Inserts a usize into this struct.
+    /// Inserts a item into this set.
     fn insert(&mut self, item: &T);
 
-    /// Calculates the hash for an item.
-    fn hash(item: &T) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        item.hash(&mut hasher);
-        hasher.finish()
-    }
+    /// Returns the number of elements in this set.
+    fn len(&self) -> usize;
+}
+/// Calculates the hash for an item.
+fn hash(item: &impl Hash) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    item.hash(&mut hasher);
+    hasher.finish()
 }
 
 /// A set of integers held in memory.
 #[derive(Debug)]
-struct InMemoryHashedItemSet<T: Hash> {
+pub struct InMemoryHashedItemSet<T: Hash> {
     // Where we store the hashes of the elements.
     hashes: HashSet<u64>,
 
@@ -51,17 +52,22 @@ impl<T: Hash> InMemoryHashedItemSet<T> {
 impl<T: Hash> HashedItemSet<T> for InMemoryHashedItemSet<T> {
     /// Returns true if the set contains this item.
     fn contains(&self, item: &T) -> bool {
-        self.hashes.contains(&Self::hash(item))
+        self.hashes.contains(&hash(item))
     }
 
     /// Inserts an item into the set
     fn insert(&mut self, item: &T) {
-        self.hashes.insert(Self::hash(item));
+        self.hashes.insert(hash(item));
+    }
+
+    /// Returns the number of elements in this set.
+    fn len(&self) -> usize {
+        self.hashes.len()
     }
 }
 
 /// Stores a large group of elements by hash, even if they can't fit in main memory.
-struct OutOfCoreHashedItemSet<T: Hash> {
+pub struct OutOfCoreHashedItemSet<T: Hash> {
     /// In memory store the hashes of the elements.
     hash_cache: HashSet<u64>,
 
@@ -78,7 +84,7 @@ struct OutOfCoreHashedItemSet<T: Hash> {
 
 impl<T: Hash> OutOfCoreHashedItemSet<T> {
     /// Contructor
-    fn new(cache_size: usize) -> Self {
+    pub fn new(cache_size: usize) -> Self {
         Self {
             hash_cache: HashSet::with_capacity(cache_size),
             cache_size,
@@ -91,7 +97,7 @@ impl<T: Hash> OutOfCoreHashedItemSet<T> {
 impl<T: Hash> HashedItemSet<T> for OutOfCoreHashedItemSet<T> {
     ///  Returns true if the set contains this item.
     fn contains(&self, item: &T) -> bool {
-        let item_hash = Self::hash(item);
+        let item_hash = hash(item);
         if self.hash_cache.contains(&item_hash) {
             return true;
         } else if let Some(hash_store) = &self.hash_store {
@@ -102,7 +108,7 @@ impl<T: Hash> HashedItemSet<T> for OutOfCoreHashedItemSet<T> {
 
     /// Inserts an item into the set
     fn insert(&mut self, item: &T) {
-        let item_hash = Self::hash(item);
+        let item_hash = hash(item);
         self.hash_cache.insert(item_hash);
         if self.hash_cache.len() == self.cache_size {
             println!("Maximum cache size {} reached.", self.cache_size);
@@ -118,6 +124,14 @@ impl<T: Hash> HashedItemSet<T> for OutOfCoreHashedItemSet<T> {
             println!("cache size: {}", self.hash_cache.len());
             println!("store size: {}", new_store.len());
             self.hash_store = Some(new_store);
+        }
+    }
+
+    /// Returns the number of elements in this set.
+    fn len(&self) -> usize {
+        match &self.hash_store {
+            Some(hash_store) => self.hash_cache.len() + hash_store.len(),
+            None => self.hash_cache.len(),
         }
     }
 }
