@@ -194,43 +194,30 @@ impl Drop for BigU64Array {
     }
 }
 
-// #[cfg(test)]
+#[cfg(test)]
 pub mod test {
     use super::*;
 
-    pub fn scratchpad() {
-        let mut hash_items = OutOfCoreHashedItemSet::new(3);
-        // use std::mem;
-        // println!("Size of hashes: {}", mem::size_of_val(&hash_items.hashes));
-        // println!("Size of phantom: {}", mem::size_of_val(&hash_items.phantom));
-
+    fn test_hashed_item_set(items: &mut impl HashedItemSet<char>) {
         for c in ('a'..='z').step_by(2) {
-            hash_items.insert(&c);
+            items.insert(&c);
         }
 
         for (i, c) in ('a'..='z').enumerate() {
-            let contains_c = hash_items.contains(&c);
-            println!("{i} : '{c}' in hash_items : {contains_c}");
             match i % 2 {
-                0 => assert!(hash_items.contains(&c)),
-                _ => assert!(!hash_items.contains(&c)),
+                0 => assert!(items.contains(&c)),
+                _ => assert!(!items.contains(&c)),
             }
         }
     }
 
     #[test]
     pub fn test_in_memory_hashed_item_set() {
-        let mut hash_items = InMemoryHashedItemSet::new();
+        test_hashed_item_set(&mut InMemoryHashedItemSet::new());
+    }
 
-        for c in ('a'..='z').step_by(2) {
-            hash_items.insert(&c);
-        }
-
-        for (i, c) in ('a'..='z').enumerate() {
-            match i % 2 {
-                0 => assert!(hash_items.contains(&c)),
-                _ => assert!(!hash_items.contains(&c)),
-            }
-        }
+    #[test]
+    pub fn test_out_of_core_hashed_item_set() {
+        test_hashed_item_set(&mut OutOfCoreHashedItemSet::new(3));
     }
 }
