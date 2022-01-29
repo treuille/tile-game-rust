@@ -1,6 +1,7 @@
 use ndarray::{Array, Array2};
 // use std::collections::HasSet;
 
+use tile_game::big_stack::Stack;
 use tile_game::out_of_core::{HashedItemSet, OutOfCoreHashedItemSet};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -56,7 +57,7 @@ impl Board {
 
 fn main() {
     // This the width and height of the tile game we're using.
-    let (w, h) = (3, 4);
+    let (w, h) = (3, 3);
     let n_elts = (w * h) as u8;
     println!("Board size: {}x{}", w, h);
 
@@ -66,7 +67,10 @@ fn main() {
 }
 
 fn find_all_boards_iteratively(board: Board) -> usize {
-    let mut unprocessed_boards: Vec<Board> = [board.clone()].to_vec();
+    // let mut unprocessed_boards: Vec<Board> = [board.clone()].to_vec();
+    let mut unprocessed_boards = Vec::<Board>::new();
+    (&mut unprocessed_boards as &mut dyn Stack<Board>).push(board.clone());
+
     let mut all_boards = OutOfCoreHashedItemSet::<Board>::new(1 << 27);
     all_boards.insert(&board);
 
