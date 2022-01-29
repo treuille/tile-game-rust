@@ -2,7 +2,7 @@ use memmap::MmapMut;
 use mktemp::Temp;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
 use std::io;
 use std::marker::PhantomData;
@@ -141,9 +141,6 @@ struct BigU64Array {
     /// The memory map itself.
     mmap: MmapMut,
 
-    /// The file that holds the memory map.
-    file: File,
-
     /// The filename of the memory map.
     filename: Temp,
 }
@@ -154,11 +151,7 @@ impl BigU64Array {
         let file = OpenOptions::new().read(true).write(true).open(&filename)?;
         file.set_len((n_elts * std::mem::size_of::<u64>()) as u64)?;
         let mmap = unsafe { MmapMut::map_mut(&file)? };
-        let array = BigU64Array {
-            filename,
-            file,
-            mmap,
-        };
+        let array = BigU64Array { filename, mmap };
         assert_eq!(array.len(), n_elts);
         println!(
             "Created BigU64Array of size {} in {:?} ",

@@ -1,10 +1,10 @@
 use ndarray::{Array, Array2};
-// use std::collections::HasSet;
+use serde::{Deserialize, Serialize};
 
+use tile_game::big_stack::{BigStack, Stack};
 use tile_game::out_of_core::{HashedItemSet, OutOfCoreHashedItemSet};
-use tile_game::unordered_queue::UnorderedQueue;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 struct Board(Array2<u8>);
 
 type Pt = [usize; 2];
@@ -57,7 +57,7 @@ impl Board {
 
 fn main() {
     // This the width and height of the tile game we're using.
-    let (w, h) = (3, 3);
+    let (w, h) = (3, 4);
     let n_elts = (w * h) as u8;
     println!("Board size: {}x{}", w, h);
 
@@ -68,8 +68,9 @@ fn main() {
 
 fn find_all_boards_iteratively(board: Board) -> usize {
     // let mut unprocessed_boards: Vec<Board> = [board.clone()].to_vec();
-    let mut unprocessed_boards = Vec::<Board>::new();
-    (&mut unprocessed_boards as &mut dyn UnorderedQueue<Board>).enqueue(board.clone());
+    let mut unprocessed_boards: BigStack<Board> = BigStack::new(1 << 25);
+    // let mut unprocessed_boards: BigStack<Board> = BigStack::new(1 << 25);
+    unprocessed_boards.push(board.clone());
 
     let mut all_boards = OutOfCoreHashedItemSet::<Board>::new(1 << 27);
     all_boards.insert(&board);
@@ -79,13 +80,13 @@ fn find_all_boards_iteratively(board: Board) -> usize {
             if !all_boards.contains(&permuted_board) {
                 unprocessed_boards.push(permuted_board.clone());
                 all_boards.insert(&permuted_board);
-                // if all_boards.len() % 10000 == 0 {
-                //     println!(
-                //         "Processed {} boards with {} to go.",
-                //         all_boards.len(),
-                //         unprocessed_boards.len()
-                //     );
-                // }
+                if all_boards.len() % 1000000 == 0 {
+                    println!(
+                        "Processed {} boards with {} to go.",
+                        all_boards.len(),
+                        unprocessed_boards.len()
+                    );
+                }
             }
         }
     }

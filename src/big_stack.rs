@@ -35,7 +35,10 @@ impl<T> Stack<T> for Vec<T> {
 }
 
 /// A big stack which can use the disk to serialize extra items.
-struct BigStack<T: Serialize> {
+pub struct BigStack<T>
+where
+    T: Debug + Serialize + for<'de> Deserialize<'de>,
+{
     /// The in-memory stack.
     stack: VecDeque<T>,
 
@@ -46,7 +49,10 @@ struct BigStack<T: Serialize> {
     temp_filenames: Vec<Temp>,
 }
 
-impl<T: Serialize> BigStack<T> {
+impl<T> BigStack<T>
+where
+    T: Debug + Serialize + for<'de> Deserialize<'de>,
+{
     /// Creates a new BigStack. Panics if capacity < 2.
     pub fn new(capacity: usize) -> Self {
         assert!(capacity >= 2, "Capacity cannot be less than 2.");
