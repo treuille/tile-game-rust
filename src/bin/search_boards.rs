@@ -60,21 +60,25 @@ fn factorial(x: usize) -> usize {
 
 fn main() {
     // This the width and height of the tile game we're using.
-    let (w, h) = (3, 3);
+    let (w, h) = (3, 4);
     let n_elts = (w * h) as u8;
     let n_solns = factorial(w * h) / 2;
     println!("Board size: {w}x{h}");
     println!("Anticipated solitions: {n_solns}");
 
     let board = Board::new(0..n_elts, &(w, h));
-    let n_solns = find_all_boards_iteratively(board);
+    let n_solns = find_all_boards_iteratively(board, n_solns);
     println!("There are {} solutions.", n_solns);
 }
 
-fn find_all_boards_iteratively(board: Board) -> usize {
-    // let mut unprocessed_boards: Vec<Board> = [board.clone()].to_vec();
+/// Counts the number of boards which are accessible from the starting position.
+///
+/// # Arguments
+///
+/// * `board` - The starting position.
+/// * `n_solns` - The expected number of solutions.
+fn find_all_boards_iteratively(board: Board, _n_solns: usize) -> usize {
     let mut unprocessed_boards: BigStack<Board> = BigStack::new(1 << 25);
-    // let mut unprocessed_boards: BigStack<Board> = BigStack::new(1 << 25);
     unprocessed_boards.push(board.clone());
 
     let mut all_boards = BigSet::<Board>::new(1 << 27);
