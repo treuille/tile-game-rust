@@ -1,4 +1,5 @@
 use mktemp::Temp;
+use std::collections::HashSet;
 
 /// A queue may or pop elements in any particuar order.
 pub trait UnorderedQueue<T> {
@@ -78,15 +79,19 @@ pub mod test {
     }
 
     fn test_queue(queue: &mut impl UnorderedQueue<usize>) {
-        for i in 0..10 {
-            println!("pushing {i}");
+        let n_elts = 10;
+        for i in 0..n_elts {
+            println!("enqueued {i}");
+            assert_eq!(queue.len(), i);
             queue.enqueue(i);
         }
+        assert_eq!(queue.len(), n_elts);
 
-        for i in (0..10).rev() {
-            assert_eq!(queue.dequeue(), Some(i));
-            println!("popped {i}");
+        while let Some(i) = queue.dequeue() {
+            assert!(i < n_elts);
+            println!("dequeued {i}");
         }
+        assert_eq!(queue.len(), 0);
     }
 
     #[test]
