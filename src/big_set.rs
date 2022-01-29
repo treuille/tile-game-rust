@@ -187,6 +187,38 @@ impl Drop for BigU64Array {
     }
 }
 
+/// Like BigSet, but puts all the items behind a bloom filter for efficiency.
+pub struct BloomSet<T: Hash> {
+    /// The mmmap-backed store of hashed items.
+    big_set: BigSet<T>,
+}
+
+impl<T: Hash> BloomSet<T> {
+    /// Contructor
+    pub fn new(cache_size: usize) -> Self {
+        Self {
+            big_set: BigSet::new(cache_size),
+        }
+    }
+}
+
+impl<T: Hash> HashedItemSet<T> for BloomSet<T> {
+    ///  Returns true if the set contains this item.
+    fn contains(&self, item: &T) -> bool {
+        self.big_set.contains(item)
+    }
+
+    /// Inserts an item into the set
+    fn insert(&mut self, item: &T) {
+        self.big_set.insert(item)
+    }
+
+    /// Returns the number of elements in this set.
+    fn len(&self) -> usize {
+        self.big_set.len()
+    }
+}
+
 #[cfg(test)]
 pub mod test {
     use super::*;
@@ -212,5 +244,10 @@ pub mod test {
     #[test]
     pub fn test_big_set() {
         test_hashed_item_set(&mut BigSet::new(3));
+    }
+
+    #[test]
+    pub fn test_bloom_set() {
+        test_hashed_item_set(&mut BloomSet::new(3));
     }
 }
