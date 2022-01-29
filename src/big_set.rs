@@ -8,7 +8,6 @@ use std::io;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-// temp_file is cleaned from the fs here
 /// A set of items, stored by their hash values.
 pub trait HashedItemSet<T: Hash> {
     /// Returns true if the set contains this item (up to hash collisions).
@@ -20,6 +19,7 @@ pub trait HashedItemSet<T: Hash> {
     /// Returns the number of elements in this set.
     fn len(&self) -> usize;
 }
+
 /// Calculates the hash for an item.
 fn hash(item: &impl Hash) -> u64 {
     let mut hasher = DefaultHasher::new();
@@ -27,9 +27,9 @@ fn hash(item: &impl Hash) -> u64 {
     hasher.finish()
 }
 
-/// A set of integers held in memory.
+/// A set of items, held in hashed form in memory. Used just for testing purposes.
 #[derive(Debug)]
-pub struct InMemoryHashedItemSet<T: Hash> {
+pub struct LittleSet<T: Hash> {
     // Where we store the hashes of the elements.
     hashes: HashSet<u64>,
 
@@ -38,7 +38,7 @@ pub struct InMemoryHashedItemSet<T: Hash> {
     phantom: PhantomData<T>,
 }
 
-impl<T: Hash> InMemoryHashedItemSet<T> {
+impl<T: Hash> LittleSet<T> {
     /// Constructor
     #[allow(dead_code)]
     pub fn new() -> Self {
@@ -49,7 +49,7 @@ impl<T: Hash> InMemoryHashedItemSet<T> {
     }
 }
 
-impl<T: Hash> HashedItemSet<T> for InMemoryHashedItemSet<T> {
+impl<T: Hash> HashedItemSet<T> for LittleSet<T> {
     /// Returns true if the set contains this item.
     fn contains(&self, item: &T) -> bool {
         self.hashes.contains(&hash(item))
@@ -67,7 +67,7 @@ impl<T: Hash> HashedItemSet<T> for InMemoryHashedItemSet<T> {
 }
 
 /// Stores a large group of elements by hash, even if they can't fit in main memory.
-pub struct OutOfCoreHashedItemSet<T: Hash> {
+pub struct BigSet<T: Hash> {
     /// In memory store the hashes of the elements.
     hash_cache: HashSet<u64>,
 
@@ -82,7 +82,7 @@ pub struct OutOfCoreHashedItemSet<T: Hash> {
     phantom: PhantomData<T>,
 }
 
-impl<T: Hash> OutOfCoreHashedItemSet<T> {
+impl<T: Hash> BigSet<T> {
     /// Contructor
     pub fn new(cache_size: usize) -> Self {
         Self {
@@ -94,7 +94,7 @@ impl<T: Hash> OutOfCoreHashedItemSet<T> {
     }
 }
 
-impl<T: Hash> HashedItemSet<T> for OutOfCoreHashedItemSet<T> {
+impl<T: Hash> HashedItemSet<T> for BigSet<T> {
     ///  Returns true if the set contains this item.
     fn contains(&self, item: &T) -> bool {
         let item_hash = hash(item);
@@ -205,12 +205,12 @@ pub mod test {
     }
 
     #[test]
-    pub fn test_in_memory_hashed_item_set() {
-        test_hashed_item_set(&mut InMemoryHashedItemSet::new());
+    pub fn test_little_set() {
+        test_hashed_item_set(&mut LittleSet::new());
     }
 
     #[test]
-    pub fn test_out_of_core_hashed_item_set() {
-        test_hashed_item_set(&mut OutOfCoreHashedItemSet::new(3));
+    pub fn test_big_set() {
+        test_hashed_item_set(&mut BigSet::new(3));
     }
 }

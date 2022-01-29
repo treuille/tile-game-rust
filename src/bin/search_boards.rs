@@ -1,8 +1,8 @@
 use ndarray::{Array, Array2};
 use serde::{Deserialize, Serialize};
 
+use tile_game::big_set::{BigSet, HashedItemSet};
 use tile_game::big_stack::{BigStack, Stack};
-use tile_game::out_of_core::{HashedItemSet, OutOfCoreHashedItemSet};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 struct Board(Array2<u8>);
@@ -54,12 +54,17 @@ impl Board {
         })
     }
 }
+fn factorial(x: usize) -> usize {
+    (2..=x).fold(1, |x, y| x * y)
+}
 
 fn main() {
     // This the width and height of the tile game we're using.
-    let (w, h) = (3, 4);
+    let (w, h) = (3, 3);
     let n_elts = (w * h) as u8;
-    println!("Board size: {}x{}", w, h);
+    let n_solns = factorial(w * h) / 2;
+    println!("Board size: {w}x{h}");
+    println!("Anticipated solitions: {n_solns}");
 
     let board = Board::new(0..n_elts, &(w, h));
     let n_solns = find_all_boards_iteratively(board);
@@ -72,7 +77,7 @@ fn find_all_boards_iteratively(board: Board) -> usize {
     // let mut unprocessed_boards: BigStack<Board> = BigStack::new(1 << 25);
     unprocessed_boards.push(board.clone());
 
-    let mut all_boards = OutOfCoreHashedItemSet::<Board>::new(1 << 27);
+    let mut all_boards = BigSet::<Board>::new(1 << 27);
     all_boards.insert(&board);
 
     while let Some(board) = unprocessed_boards.pop() {
