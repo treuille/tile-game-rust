@@ -1,7 +1,7 @@
 use ndarray::{Array, Array2};
 // use std::collections::HasSet;
 
-use tile_game::out_of_core::{HashedItemSet, InMemoryHashedItemSet, OutOfCoreHashedItemSet};
+use tile_game::out_of_core::{HashedItemSet, OutOfCoreHashedItemSet};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct Board(Array2<u8>);
@@ -89,7 +89,7 @@ fn find_all_boards_iteratively(board: Board) -> usize {
 }
 
 #[test]
-fn test_permute() {
+fn test_board_perumute() {
     let a1 = Board::new([0, 1, 2, 3], &(2, 2));
     let a2 = Board::new([1, 0, 2, 3], &(2, 2));
     let a3 = a1.permute(&[0, 0], &[0, 1]);
