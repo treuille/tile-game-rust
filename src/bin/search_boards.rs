@@ -1,8 +1,8 @@
 use ndarray::{Array, Array2};
 // use std::collections::HasSet;
 
-use tile_game::big_stack::Stack;
 use tile_game::out_of_core::{HashedItemSet, OutOfCoreHashedItemSet};
+use tile_game::unordered_queue::UnorderedQueue;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct Board(Array2<u8>);
@@ -69,7 +69,7 @@ fn main() {
 fn find_all_boards_iteratively(board: Board) -> usize {
     // let mut unprocessed_boards: Vec<Board> = [board.clone()].to_vec();
     let mut unprocessed_boards = Vec::<Board>::new();
-    (&mut unprocessed_boards as &mut dyn Stack<Board>).push(board.clone());
+    (&mut unprocessed_boards as &mut dyn UnorderedQueue<Board>).enqueue(board.clone());
 
     let mut all_boards = OutOfCoreHashedItemSet::<Board>::new(1 << 27);
     all_boards.insert(&board);
