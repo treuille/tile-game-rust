@@ -9,6 +9,7 @@ edition = "2021"
 ndarray = "0.15.0"
 mktemp = "0.4.1"
 memmap = "0.7.0"
+bincode = "2.0.0-beta.2"
 
 [lib]
 name="tile_game"
