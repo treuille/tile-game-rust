@@ -200,10 +200,6 @@ impl<T: Hash> BloomSet<T> {
     /// * `items_count` - The expected number total items stored.
     /// * `fp_p` - The desired number of false positives in the bloom filter.  
     pub fn new(cache_size: usize, items_count: usize, fp_p: f64) -> Self {
-        // println!(
-        //     "Bitmap size: {}",
-        //     Bloom::<T>::compute_bitmap_size(items_count, fp_p)
-        // );
         Self {
             bloom_filter: Bloom::new_for_fp_rate(items_count, fp_p),
             big_set: BigSet::new(cache_size),

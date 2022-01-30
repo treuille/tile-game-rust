@@ -62,7 +62,7 @@ fn factorial(x: usize) -> usize {
 
 fn main() {
     // This the width and height of the tile game we're using.
-    let (w, h) = (3, 4);
+    let (w, h) = (3, 3);
     let n_elts = (w * h) as u8;
     let n_solns = factorial(w * h) / 2;
     println!("Board size: {w}x{h}");
@@ -83,8 +83,6 @@ fn find_all_boards_iteratively(board: Board, n_solns: usize) -> usize {
     let mut unprocessed_boards: BigStack<Board> = BigStack::new(1 << 25);
     unprocessed_boards.push(board.clone());
 
-    // let mut all_boards = BigSet::<Board>::new(1 << 25);
-    // let mut all_boards = BloomSet::<Board>::new(1 << 25, n_solns, 0.75);
     let mut all_boards = PartitionSet::<Board>::new(1 << 18, n_solns, 0.75, 128);
     all_boards.insert(&board);
 
@@ -100,13 +98,6 @@ fn find_all_boards_iteratively(board: Board, n_solns: usize) -> usize {
                         unprocessed_boards.len()
                     );
                 }
-                // if (all_boards.len() + 1) % 10000000 == 0 {
-                //     panic!(
-                //         "Exiting early at {} with {} to go.",
-                //         all_boards.len(),
-                //         unprocessed_boards.len()
-                //     );
-                // }
             }
         }
     }
