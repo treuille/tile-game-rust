@@ -1,12 +1,13 @@
+use bloomfilter::Bloom;
 use memmap::MmapMut;
 use mktemp::Temp;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
-use std::io;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
+use std::{cmp, io};
 
 /// A set of items, stored by their hash values.
 pub trait HashedItemSet<T: Hash> {
@@ -181,22 +182,30 @@ impl DerefMut for BigU64Array {
     }
 }
 
-impl Drop for BigU64Array {
-    fn drop(&mut self) {
-        println!("Dropping array backed by {:?}", self.filename.to_path_buf());
-    }
-}
-
 /// Like BigSet, but puts all the items behind a bloom filter for efficiency.
 pub struct BloomSet<T: Hash> {
+    /// The bloom filter to avoid some searches.
+    bloom_filter: Bloom<T>,
+
     /// The mmmap-backed store of hashed items.
     big_set: BigSet<T>,
 }
 
 impl<T: Hash> BloomSet<T> {
-    /// Contructor
-    pub fn new(cache_size: usize) -> Self {
+    /// Constructs a new BloomSet
+    ///
+    /// # Arguments
+    ///
+    /// * `cache_size` - The maximum number of hashed items to store in memory.
+    /// * `items_count` - The expected number total items stored.
+    /// * `fp_p` - The desired number of false positives in the bloom filter.  
+    pub fn new(cache_size: usize, items_count: usize, fp_p: f64) -> Self {
+        println!(
+            "Bitmap size: {}",
+            Bloom::<T>::compute_bitmap_size(items_count, fp_p)
+        );
         Self {
+            bloom_filter: Bloom::new_for_fp_rate(items_count, fp_p),
             big_set: BigSet::new(cache_size),
         }
     }
@@ -205,11 +214,17 @@ impl<T: Hash> BloomSet<T> {
 impl<T: Hash> HashedItemSet<T> for BloomSet<T> {
     ///  Returns true if the set contains this item.
     fn contains(&self, item: &T) -> bool {
-        self.big_set.contains(item)
+        if self.bloom_filter.check(item) {
+            // There could be a false positive so we have to check explicitly.
+            self.big_set.contains(item)
+        } else {
+            false
+        }
     }
 
     /// Inserts an item into the set
     fn insert(&mut self, item: &T) {
+        self.bloom_filter.set(item);
         self.big_set.insert(item)
     }
 
@@ -219,12 +234,63 @@ impl<T: Hash> HashedItemSet<T> for BloomSet<T> {
     }
 }
 
+/// Like BigSet, but puts all the items behind a bloom filter for efficiency.
+pub struct PartitionSet<T: Hash> {
+    /// The number of partions
+    n_partitions: usize,
+
+    /// The bloom filter to avoid some searches.
+    partitions: Vec<BloomSet<T>>,
+}
+
+impl<T: Hash> PartitionSet<T> {
+    /// Constructs a new PartitionSet
+    ///
+    /// # Arguments
+    ///
+    /// * `cache_size` - The maximum number of hashed items to store in memory.
+    /// * `items_count` - The expected number total items stored.
+    /// * `fp_p` - The desired number of false positives in the bloom filter.  
+    /// * `n_partitions` - The number of memory mapped partitions for this set.
+    pub fn new(cache_size: usize, items_count: usize, fp_p: f64, n_partitions: usize) -> Self {
+        assert!(n_partitions > 0, "Must have at least one partition.");
+        let items_per_partition = cmp::max(items_count / n_partitions, 1);
+        let partitions = (0..n_partitions)
+            .map(|_| BloomSet::new(cache_size, items_per_partition, fp_p))
+            .collect::<Vec<_>>();
+        Self {
+            n_partitions,
+            partitions,
+        }
+    }
+}
+
+impl<T: Hash> HashedItemSet<T> for PartitionSet<T> {
+    ///  Returns true if the set contains this item.
+    fn contains(&self, item: &T) -> bool {
+        let partition = (hash(item) as usize) % self.n_partitions;
+        self.partitions[partition].contains(item)
+    }
+
+    /// Inserts an item into the set
+    fn insert(&mut self, item: &T) {
+        let partition = (hash(item) as usize) % self.n_partitions;
+        self.partitions[partition].insert(item)
+    }
+
+    /// Returns the number of elements in this set.
+    fn len(&self) -> usize {
+        self.partitions.iter().map(|p| p.len()).sum()
+    }
+}
+
 #[cfg(test)]
 pub mod test {
     use super::*;
 
     fn test_hashed_item_set(items: &mut impl HashedItemSet<char>) {
-        for c in ('a'..='z').step_by(2) {
+        for (i, c) in ('a'..='z').step_by(2).enumerate() {
+            assert_eq!(items.len(), i);
             items.insert(&c);
         }
 
@@ -248,6 +314,11 @@ pub mod test {
 
     #[test]
     pub fn test_bloom_set() {
-        test_hashed_item_set(&mut BloomSet::new(3));
+        test_hashed_item_set(&mut BloomSet::new(3, 26, 0.5));
+    }
+
+    #[test]
+    pub fn test_partition_set() {
+        test_hashed_item_set(&mut PartitionSet::new(3, 26, 0.5, 2));
     }
 }

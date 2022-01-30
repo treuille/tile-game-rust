@@ -1,7 +1,9 @@
 use ndarray::{Array, Array2};
 use serde::{Deserialize, Serialize};
 
-use tile_game::big_set::{BigSet, HashedItemSet};
+#[allow(unused_imports)]
+use tile_game::big_set::{BigSet, BloomSet, HashedItemSet};
+
 use tile_game::big_stack::{BigStack, Stack};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
@@ -77,11 +79,12 @@ fn main() {
 ///
 /// * `board` - The starting position.
 /// * `n_solns` - The expected number of solutions.
-fn find_all_boards_iteratively(board: Board, _n_solns: usize) -> usize {
+fn find_all_boards_iteratively(board: Board, n_solns: usize) -> usize {
     let mut unprocessed_boards: BigStack<Board> = BigStack::new(1 << 25);
     unprocessed_boards.push(board.clone());
 
-    let mut all_boards = BigSet::<Board>::new(1 << 27);
+    // let mut all_boards = BigSet::<Board>::new(1 << 25);
+    let mut all_boards = BloomSet::<Board>::new(1 << 25, n_solns, 0.75);
     all_boards.insert(&board);
 
     while let Some(board) = unprocessed_boards.pop() {
@@ -96,6 +99,13 @@ fn find_all_boards_iteratively(board: Board, _n_solns: usize) -> usize {
                         unprocessed_boards.len()
                     );
                 }
+                // if (all_boards.len() + 1) % 10000000 == 0 {
+                //     panic!(
+                //         "Exiting early at {} with {} to go.",
+                //         all_boards.len(),
+                //         unprocessed_boards.len()
+                //     );
+                // }
             }
         }
     }

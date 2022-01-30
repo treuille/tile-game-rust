@@ -1,5 +1,6 @@
-use tile_game::big_stack::test;
+// use tile_game::big_set::test;
 
 fn main() {
-    test::scratchpad();
+    println!("Hello, world.");
+    // test::test_partition_set();
 }
