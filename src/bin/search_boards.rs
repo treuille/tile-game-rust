@@ -2,7 +2,7 @@ use ndarray::{Array, Array2};
 use serde::{Deserialize, Serialize};
 
 #[allow(unused_imports)]
-use tile_game::big_set::{BigSet, BloomSet, HashedItemSet};
+use tile_game::big_set::{BigSet, BloomSet, HashedItemSet, PartitionSet};
 
 use tile_game::big_stack::{BigStack, Stack};
 
@@ -66,7 +66,7 @@ fn main() {
     let n_elts = (w * h) as u8;
     let n_solns = factorial(w * h) / 2;
     println!("Board size: {w}x{h}");
-    println!("Anticipated solitions: {n_solns}");
+    println!("Anticipated solutions: {n_solns}");
 
     let board = Board::new(0..n_elts, &(w, h));
     let n_solns = find_all_boards_iteratively(board, n_solns);
@@ -84,7 +84,8 @@ fn find_all_boards_iteratively(board: Board, n_solns: usize) -> usize {
     unprocessed_boards.push(board.clone());
 
     // let mut all_boards = BigSet::<Board>::new(1 << 25);
-    let mut all_boards = BloomSet::<Board>::new(1 << 25, n_solns, 0.75);
+    // let mut all_boards = BloomSet::<Board>::new(1 << 25, n_solns, 0.75);
+    let mut all_boards = PartitionSet::<Board>::new(1 << 18, n_solns, 0.75, 128);
     all_boards.insert(&board);
 
     while let Some(board) = unprocessed_boards.pop() {
