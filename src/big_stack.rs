@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::fs::File;
+use std::marker::PhantomData;
 
 // A stack may or pop elements in any particuar order.
 pub trait Stack<T> {
@@ -15,7 +16,26 @@ pub trait Stack<T> {
 
     /// Returns the number of elements in this set.
     fn len(&self) -> usize;
+
+    /// A iterator which drains the stack in reverse by calling pop().
+    fn rev_drain(&mut self) -> Drain<'_, Self, T>
+    where
+        Self: Sized,
+    {
+        Drain {
+            stack: self,
+            _phantom: PhantomData,
+        }
+    }
 }
+
+// impl<T> Iterator for dyn Stack<T> {
+//     type Item = T;
+
+//     fn next(&mut self) -> Option<Self::Item> {
+//         self.pop()
+//     }
+// }
 
 impl<T> Stack<T> for Vec<T> {
     /// Push an item onto the stack.
@@ -31,6 +51,26 @@ impl<T> Stack<T> for Vec<T> {
     /// Returns the number of elements in this set.
     fn len(&self) -> usize {
         self.len()
+    }
+}
+
+/// A iterator which drains the stack in reverse by calling pop()
+pub struct Drain<'s, S, T>
+where
+    S: Stack<T> + 's,
+{
+    stack: &'s mut S,
+    _phantom: PhantomData<T>,
+}
+
+impl<'s, S, T> Iterator for Drain<'s, S, T>
+where
+    S: Stack<T> + 's,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.stack.pop()
     }
 }
 
@@ -113,7 +153,7 @@ where
     }
 }
 
-// #[cfg(test)]
+#[cfg(test)]
 pub mod test {
     use super::*;
 
@@ -123,15 +163,18 @@ pub mod test {
         test_big_stack();
     }
 
+    #[test]
     fn test_vec_stack() {
         test_stack(&mut Vec::new());
     }
 
+    #[test]
     fn test_big_stack() {
         test_stack(&mut BigStack::new(5));
     }
 
     fn test_stack(stack: &mut impl Stack<usize>) {
+        // Test pushing items on the stack.
         let n_elts = 10;
         for i in 0..n_elts {
             println!("Pushed {i}");
@@ -140,13 +183,18 @@ pub mod test {
         }
         assert_eq!(stack.len(), n_elts);
 
+        // Test the rev_drain() method.
+        let elts_to_drain = n_elts / 2;
+        for (i, item) in stack.rev_drain().take(elts_to_drain).enumerate() {
+            assert_eq!(n_elts - 1 - i, item);
+        }
+        let n_elts = n_elts - elts_to_drain;
+        assert_eq!(stack.len(), n_elts);
+
+        // Test the pop() method
         for i in (0..n_elts).rev() {
-            assert_eq!(stack.pop(), Some(i));
+            assert_eq!(Some(i), stack.pop());
             assert_eq!(stack.len(), i);
-            println!("Popped {i}");
         }
     }
-
-    #[test]
-    pub fn foo_test() {}
 }

@@ -14,5 +14,4 @@ fn main() {
             thread::sleep(one_second);
         })
         .for_each(drop);
-    // .collect::<Vec<_>>();
 }
