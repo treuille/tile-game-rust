@@ -41,37 +41,17 @@ fn find_all_boards_in_parallel(board: Board) -> usize {
         let next_unprocessed_boards: Arc<Mutex<BigStack<Board>>> =
             Arc::new(Mutex::new(BigStack::new(cache_size)));
 
-        if true {
-            iter::repeat(())
-                .map_while(|_| unprocessed_boards.pop())
-                .par_bridge()
-                .for_each(|board| {
-                    let mut all_boards = all_boards.lock().unwrap();
-                    if !all_boards.contains(&board) {
-                        all_boards.insert(&board);
-                        // if all_boards.len() % 1000000 == 0 {
-                        //     println!(
-                        //         "Processed {} boards with {} to go.",
-                        //         all_boards.len(),
-                        //         unprocessed_boards.len() + next_unprocessed_boards.len()
-                        //     );
-                        // }
-                        let mut next_unprocessed_boards = next_unprocessed_boards.lock().unwrap();
-                        for permuted_board in board.slide_iter() {
-                            next_unprocessed_boards.push(permuted_board);
-                        }
-                    }
-                });
-        } else {
-            // // Take up to `local_board_queue_len` elements from `local_board_queue`.
-            let local_board_queue_len = 1 << 10;
-            let local_board_queue: Vec<Board> = (0..local_board_queue_len)
+        loop {
+            // Take up to `parallel_buffer_len` elements from `parallel_buffer`.
+            let parallel_buffer_len = 1 << 10;
+            let parallel_buffer: Vec<Board> = iter::repeat(())
+                .take(parallel_buffer_len)
                 .map_while(|_| unprocessed_boards.pop())
                 .collect();
-            if local_board_queue.len() == 0 {
+            if parallel_buffer.len() == 0 {
                 break;
             }
-            local_board_queue.par_iter().for_each(|board| {
+            parallel_buffer.par_iter().for_each(|board| {
                 let mut all_boards = all_boards.lock().unwrap();
                 if !all_boards.contains(&board) {
                     all_boards.insert(&board);
@@ -87,18 +67,12 @@ fn find_all_boards_in_parallel(board: Board) -> usize {
                         next_unprocessed_boards.push(permuted_board);
                     }
                 }
-            });
+            })
         }
         {
             let mut next_unprocessed_boards = next_unprocessed_boards.lock().unwrap();
             mem::swap(&mut unprocessed_boards, &mut next_unprocessed_boards);
         }
-        // println!(
-        //     "Finished a rung {} boards with ({}, {}) to go.",
-        //     all_boards.len(),
-        //     unprocessed_boards.len(),
-        //     next_unprocessed_boards.len()
-        // );
     }
 
     let boards_found = {
