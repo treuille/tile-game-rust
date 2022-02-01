@@ -30,7 +30,7 @@ fn main() {
 
 /// Counts the number of boards which are accessible from the starting position.
 fn find_all_boards_in_parallel(board: Board) -> usize {
-    let cache_size = 1 << 25;
+    let cache_size = 50000; // 1 << 25;
     let local_board_queue_len = 1 << 10;
 
     let mut unprocessed_boards: BigStack<Board> = BigStack::new(cache_size);
