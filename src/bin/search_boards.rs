@@ -1,3 +1,5 @@
+use rayon::prelude::*;
+
 #[allow(unused_imports)]
 use tile_game::big_set::{BigSet, BloomSet, HashedItemSet, PartitionSet};
 
@@ -6,6 +8,7 @@ use tile_game::big_stack::{BigStack, Stack};
 use tile_game::board::Board;
 
 use std::mem;
+use std::sync::{Arc, Mutex};
 
 fn factorial(x: usize) -> usize {
     (2..=x).fold(1, |x, y| x * y)
@@ -28,40 +31,58 @@ fn main() {
 /// Counts the number of boards which are accessible from the starting position.
 fn find_all_boards_in_parallel(board: Board) -> usize {
     let cache_size = 1 << 25;
+    let local_board_queue_len = 1 << 10;
+
     let mut unprocessed_boards: BigStack<Board> = BigStack::new(cache_size);
     unprocessed_boards.push(board.clone());
 
-    let mut all_boards: BigSet<Board> = BigSet::new(1 << 18);
+    let all_boards: Arc<Mutex<BigSet<Board>>> = Arc::new(Mutex::new(BigSet::new(1 << 19)));
 
     while unprocessed_boards.len() != 0 {
-        let mut next_unprocessed_boards: BigStack<Board> = BigStack::new(cache_size);
+        let next_unprocessed_boards: Arc<Mutex<BigStack<Board>>> =
+            Arc::new(Mutex::new(BigStack::new(cache_size)));
 
-        for board in unprocessed_boards.rev_drain() {
-            if !all_boards.contains(&board) {
-                all_boards.insert(&board);
-                // if all_boards.len() % 1000000 == 0 {
-                //     println!(
-                //         "Processed {} boards with {} to go.",
-                //         all_boards.len(),
-                //         unprocessed_boards.len() + next_unprocessed_boards.len()
-                //     );
-                // }
-                for permuted_board in board.slide_iter() {
-                    // unprocessed_boards.push(permuted_board.clone());
-                    next_unprocessed_boards.push(permuted_board);
-                }
+        let mut drain = unprocessed_boards.rev_drain();
+        loop {
+            let local_board_queue: Vec<Board> = (&mut drain).take(local_board_queue_len).collect();
+            if local_board_queue.len() == 0 {
+                break;
             }
+            local_board_queue.par_iter().for_each(|board| {
+                let mut all_boards = all_boards.lock().unwrap();
+                if !all_boards.contains(&board) {
+                    all_boards.insert(&board);
+                    // if all_boards.len() % 1000000 == 0 {
+                    //     println!(
+                    //         "Processed {} boards with {} to go.",
+                    //         all_boards.len(),
+                    //         unprocessed_boards.len() + next_unprocessed_boards.len()
+                    //     );
+                    // }
+                    let mut next_unprocessed_boards = next_unprocessed_boards.lock().unwrap();
+                    for permuted_board in board.slide_iter() {
+                        next_unprocessed_boards.push(permuted_board);
+                    }
+                }
+            })
         }
-        mem::swap(&mut unprocessed_boards, &mut next_unprocessed_boards);
-        println!(
-            "Finished a rung {} boards with ({}, {}) to go.",
-            all_boards.len(),
-            unprocessed_boards.len(),
-            next_unprocessed_boards.len()
-        );
+        {
+            let mut next_unprocessed_boards = next_unprocessed_boards.lock().unwrap();
+            mem::swap(&mut unprocessed_boards, &mut next_unprocessed_boards);
+        }
+        // println!(
+        //     "Finished a rung {} boards with ({}, {}) to go.",
+        //     all_boards.len(),
+        //     unprocessed_boards.len(),
+        //     next_unprocessed_boards.len()
+        // );
     }
 
-    all_boards.len()
+    let boards_found = {
+        let all_boards = all_boards.lock().unwrap();
+        all_boards.len()
+    };
+    boards_found
 }
 
 /// Counts the number of boards which are accessible from the starting position.
