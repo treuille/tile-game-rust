@@ -2,5 +2,9 @@
 
 fn main() {
     println!("Hello, world.");
-    // test::test_partition_set();
+
+    // let mut v = vec![1, 2, 3, 4, 5];
+    // for x in v {
+    //     println!("{x} len={}", v.len());
+    // }
 }
