@@ -7,8 +7,8 @@ use tile_game::big_stack::{BigStack, Stack};
 
 use tile_game::board::Board;
 
-use std::mem;
 use std::sync::{Arc, Mutex};
+use std::{iter, mem};
 
 fn factorial(x: usize) -> usize {
     (2..=x).fold(1, |x, y| x * y)
@@ -31,7 +31,6 @@ fn main() {
 /// Counts the number of boards which are accessible from the starting position.
 fn find_all_boards_in_parallel(board: Board) -> usize {
     let cache_size = 50000; // 1 << 25;
-    let local_board_queue_len = 1 << 10;
 
     let mut unprocessed_boards: BigStack<Board> = BigStack::new(cache_size);
     unprocessed_boards.push(board.clone());
@@ -42,8 +41,30 @@ fn find_all_boards_in_parallel(board: Board) -> usize {
         let next_unprocessed_boards: Arc<Mutex<BigStack<Board>>> =
             Arc::new(Mutex::new(BigStack::new(cache_size)));
 
-        loop {
-            // Take up to `local_board_queue_len` elements from `local_board_queue`.
+        if true {
+            iter::repeat(())
+                .map_while(|_| unprocessed_boards.pop())
+                .par_bridge()
+                .for_each(|board| {
+                    let mut all_boards = all_boards.lock().unwrap();
+                    if !all_boards.contains(&board) {
+                        all_boards.insert(&board);
+                        // if all_boards.len() % 1000000 == 0 {
+                        //     println!(
+                        //         "Processed {} boards with {} to go.",
+                        //         all_boards.len(),
+                        //         unprocessed_boards.len() + next_unprocessed_boards.len()
+                        //     );
+                        // }
+                        let mut next_unprocessed_boards = next_unprocessed_boards.lock().unwrap();
+                        for permuted_board in board.slide_iter() {
+                            next_unprocessed_boards.push(permuted_board);
+                        }
+                    }
+                });
+        } else {
+            // // Take up to `local_board_queue_len` elements from `local_board_queue`.
+            let local_board_queue_len = 1 << 10;
             let local_board_queue: Vec<Board> = (0..local_board_queue_len)
                 .map_while(|_| unprocessed_boards.pop())
                 .collect();
@@ -66,7 +87,7 @@ fn find_all_boards_in_parallel(board: Board) -> usize {
                         next_unprocessed_boards.push(permuted_board);
                     }
                 }
-            })
+            });
         }
         {
             let mut next_unprocessed_boards = next_unprocessed_boards.lock().unwrap();
