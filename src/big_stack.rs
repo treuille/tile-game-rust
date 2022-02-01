@@ -1,10 +1,13 @@
 use bincode;
 use mktemp::Temp;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::fs::File;
 use std::marker::PhantomData;
+// use std::sync::{Arc, Mutex};
+use std::io::Write;
 
 // A stack may or pop elements in any particuar order.
 pub trait Stack<T> {
@@ -111,20 +114,29 @@ where
 
 impl<T> Stack<T> for BigStack<T>
 where
-    T: Debug + Serialize + for<'de> Deserialize<'de>,
+    T: Debug + Send + Sync + Serialize + for<'de> Deserialize<'de>,
 {
     /// Push an item onto the stack.
     fn push(&mut self, item: T) {
         if self.stack.len() == self.capacity {
             // If we're at capacity, move this stack into storage.
             let temp_filename = Temp::new_file().unwrap();
-            let temp_file = File::create(&temp_filename).unwrap();
+
+            let mut temp_file = File::create(&temp_filename).unwrap();
 
             println!("Creating file: {:?}", temp_filename.to_path_buf());
 
-            for item in self.stack.drain(..self.half_capacity()) {
-                bincode::serialize_into(&temp_file, &item).unwrap();
-            }
+            let serialized_data: Vec<u8> = self
+                .stack
+                .drain(..self.half_capacity())
+                .collect::<Vec<_>>()
+                .par_iter()
+                .map(|item| bincode::serialize(item).unwrap())
+                .reduce(Vec::<u8>::new, |mut v1, v2| {
+                    v1.extend(v2);
+                    v1
+                });
+            temp_file.write_all(&serialized_data).unwrap();
 
             self.temp_filenames.push(temp_filename);
         }
