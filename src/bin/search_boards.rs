@@ -42,9 +42,11 @@ fn find_all_boards_in_parallel(board: Board) -> usize {
         let next_unprocessed_boards: Arc<Mutex<BigStack<Board>>> =
             Arc::new(Mutex::new(BigStack::new(cache_size)));
 
-        let mut drain = unprocessed_boards.rev_drain();
         loop {
-            let local_board_queue: Vec<Board> = (&mut drain).take(local_board_queue_len).collect();
+            // Take up to `local_board_queue_len` elements from `local_board_queue`.
+            let local_board_queue: Vec<Board> = (0..local_board_queue_len)
+                .map_while(|_| unprocessed_boards.pop())
+                .collect();
             if local_board_queue.len() == 0 {
                 break;
             }

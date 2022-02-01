@@ -5,8 +5,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::fs::File;
-use std::marker::PhantomData;
-// use std::sync::{Arc, Mutex};
 use std::io::Write;
 
 // A stack may or pop elements in any particuar order.
@@ -19,26 +17,7 @@ pub trait Stack<T> {
 
     /// Returns the number of elements in this set.
     fn len(&self) -> usize;
-
-    /// A iterator which drains the stack in reverse by calling pop().
-    fn rev_drain(&mut self) -> Drain<'_, Self, T>
-    where
-        Self: Sized,
-    {
-        Drain {
-            stack: self,
-            _phantom: PhantomData,
-        }
-    }
 }
-
-// impl<T> Iterator for dyn Stack<T> {
-//     type Item = T;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         self.pop()
-//     }
-// }
 
 impl<T> Stack<T> for Vec<T> {
     /// Push an item onto the stack.
@@ -54,26 +33,6 @@ impl<T> Stack<T> for Vec<T> {
     /// Returns the number of elements in this set.
     fn len(&self) -> usize {
         self.len()
-    }
-}
-
-/// A iterator which drains the stack in reverse by calling pop()
-pub struct Drain<'s, S, T>
-where
-    S: Stack<T> + 's,
-{
-    stack: &'s mut S,
-    _phantom: PhantomData<T>,
-}
-
-impl<'s, S, T> Iterator for Drain<'s, S, T>
-where
-    S: Stack<T> + 's,
-{
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.stack.pop()
     }
 }
 
