@@ -36,7 +36,7 @@ fn find_all_boards_in_parallel(board: Board) -> usize {
     while unprocessed_boards.len() != 0 {
         let mut next_unprocessed_boards: BigStack<Board> = BigStack::new(cache_size);
 
-        while let Some(board) = unprocessed_boards.pop() {
+        for board in unprocessed_boards.rev_drain() {
             if !all_boards.contains(&board) {
                 all_boards.insert(&board);
                 // if all_boards.len() % 1000000 == 0 {
