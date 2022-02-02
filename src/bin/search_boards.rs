@@ -32,7 +32,7 @@ fn main() {
 
 /// Counts the number of boards which are accessible from the starting position.
 fn find_all_boards_in_parallel(board: Board) -> usize {
-    let stack_cache_size = 1 << 23;
+    let stack_cache_size = 1 << 24;
     let mut unprocessed_boards: BigStack<Board> = BigStack::new(stack_cache_size);
     unprocessed_boards.push(board.clone());
 

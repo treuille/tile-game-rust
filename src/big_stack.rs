@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Read, Seek, Write};
 
 // A stack may or pop elements in any particuar order.
 pub trait Stack<T> {
@@ -107,10 +107,31 @@ where
         self.stack.pop_back().or_else(|| {
             if let Some(temp_filename) = self.temp_filenames.pop() {
                 println!("Opening {:?}", temp_filename.to_path_buf());
-                let temp_file = File::open(temp_filename).unwrap();
-                while let Ok(item) = bincode::deserialize_from(&temp_file) {
-                    self.stack.push_back(item);
-                }
+                let mut temp_file = File::open(temp_filename).unwrap();
+
+                // Get the size of each board by deserializing one first
+                let first_board = bincode::deserialize_from(&temp_file).unwrap();
+                let board_bytes = temp_file.stream_position().unwrap() as usize;
+                self.stack.push_back(first_board);
+
+                // Deserialize the rest in parallel.
+                let expected_boards = self.capacity / 2 - 1;
+                let mut contents = Vec::with_capacity(expected_boards * board_bytes);
+                temp_file.read_to_end(&mut contents).unwrap();
+                assert_eq!(
+                    contents.len() / board_bytes,
+                    expected_boards,
+                    "Expected {expected_boards} boards."
+                );
+                self.stack.par_extend(
+                    contents
+                        .chunks(board_bytes)
+                        .collect::<Vec<_>>()
+                        .par_iter()
+                        .map(|bytes| bincode::deserialize(bytes).unwrap()),
+                );
+
+                // The stack should no longer be empty.
                 self.stack.pop_back()
             } else {
                 None

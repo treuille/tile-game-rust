@@ -114,7 +114,6 @@ impl<T: Hash> HashedItemSet<T> for BigSet<T> {
         let item_hash = hash(item);
         self.hash_cache.insert(item_hash);
         if self.hash_cache.len() == self.cache_size {
-            // println!("Maximum cache size {} reached.", self.cache_size);
             let old_store_len = self.hash_store.as_ref().map_or(0, |s| s.len());
             let mut new_store = BigU64Array::new(old_store_len + self.cache_size).unwrap();
             if let Some(old_store) = &self.hash_store {
@@ -124,8 +123,6 @@ impl<T: Hash> HashedItemSet<T> for BigSet<T> {
                 new_store[old_store_len + i] = item_hash;
             }
             new_store.sort();
-            // println!("cache size: {}", self.hash_cache.len());
-            // println!("store size: {}", new_store.len());
             self.hash_store = Some(new_store);
         }
     }
