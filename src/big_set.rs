@@ -113,6 +113,7 @@ impl<T: Hash> HashedItemSet<T> for BigSet<T> {
     fn insert(&mut self, item: &T) {
         let item_hash = hash(item);
         self.hash_cache.insert(item_hash);
+        let stack_cache_size = 1 << 10;
         if self.hash_cache.len() == self.cache_size {
             let old_store_len = self.hash_store.as_ref().map_or(0, |s| s.len());
             let mut new_store = BigU64Array::new(old_store_len + self.cache_size).unwrap();
@@ -235,7 +236,8 @@ pub struct PartitionSet<T: Hash> {
     n_partitions: usize,
 
     /// The bloom filter to avoid some searches.
-    partitions: Vec<BloomSet<T>>,
+    // partitions: Vec<BloomSet<T>>,
+    partitions: Vec<BigSet<T>>,
 }
 
 impl<T: Hash> PartitionSet<T> {
@@ -247,11 +249,12 @@ impl<T: Hash> PartitionSet<T> {
     /// * `items_count` - The expected number total items stored.
     /// * `fp_p` - The desired number of false positives in the bloom filter.  
     /// * `n_partitions` - The number of memory mapped partitions for this set.
-    pub fn new(cache_size: usize, items_count: usize, fp_p: f64, n_partitions: usize) -> Self {
+    pub fn new(cache_size: usize, _items_count: usize, _fp_p: f64, n_partitions: usize) -> Self {
         assert!(n_partitions > 0, "Must have at least one partition.");
-        let items_per_partition = cmp::max(items_count / n_partitions, 1);
+        // let items_per_partition = cmp::max(items_count / n_partitions, 1);
         let partitions = (0..n_partitions)
-            .map(|_| BloomSet::new(cache_size, items_per_partition, fp_p))
+            // .map(|_| BloomSet::new(cache_size, items_per_partition, fp_p))
+            .map(|_| BigSet::new(cache_size))
             .collect::<Vec<_>>();
         Self {
             n_partitions,

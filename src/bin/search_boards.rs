@@ -25,8 +25,8 @@ fn main() {
     println!("Anticipated solutions: {n_solns}");
 
     let board = Board::new(0..n_elts, &(w, h));
-    // let n_solns = find_all_boards_iteratively(board, n_solns);
-    let n_solns = find_all_boards_in_parallel(board);
+    let n_solns = find_all_boards_iteratively(board, n_solns);
+    // let n_solns = find_all_boards_in_parallel(board);
     println!("There are {} solutions.", n_solns);
 }
 
