@@ -1,13 +1,15 @@
 use bloomfilter::Bloom;
 use memmap::MmapMut;
 use mktemp::Temp;
+use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
-use std::{cmp, io};
+use std::sync::Mutex;
+use std::{cmp, io, iter};
 
 /// A set of items, stored by their hash values.
 pub trait HashedItemSet<T: Hash> {
@@ -112,7 +114,7 @@ impl<T: Hash> HashedItemSet<T> for BigSet<T> {
         let item_hash = hash(item);
         self.hash_cache.insert(item_hash);
         if self.hash_cache.len() == self.cache_size {
-            println!("Maximum cache size {} reached.", self.cache_size);
+            // println!("Maximum cache size {} reached.", self.cache_size);
             let old_store_len = self.hash_store.as_ref().map_or(0, |s| s.len());
             let mut new_store = BigU64Array::new(old_store_len + self.cache_size).unwrap();
             if let Some(old_store) = &self.hash_store {
@@ -122,8 +124,8 @@ impl<T: Hash> HashedItemSet<T> for BigSet<T> {
                 new_store[old_store_len + i] = item_hash;
             }
             new_store.sort();
-            println!("cache size: {}", self.hash_cache.len());
-            println!("store size: {}", new_store.len());
+            // println!("cache size: {}", self.hash_cache.len());
+            // println!("store size: {}", new_store.len());
             self.hash_store = Some(new_store);
         }
     }
@@ -280,6 +282,94 @@ impl<T: Hash> HashedItemSet<T> for PartitionSet<T> {
     }
 }
 
+/// This is a set which can be operated through interior mutability
+pub trait InteriorMutableSet<T>
+where
+    T: Hash,
+{
+    /// Inserts an item the set, returning true if the item had already been inserted.
+    fn insert_check(&self, item: &T) -> bool;
+
+    /// Returns the lengths of this set.
+    fn len(&self) -> usize;
+}
+
+impl<T> InteriorMutableSet<T> for RefCell<BigSet<T>>
+where
+    T: Hash,
+{
+    /// Inserts an item, returning true if the item had *previously* been inserted.
+    fn insert_check(&self, item: &T) -> bool {
+        let mut big_set = self.borrow_mut();
+        if big_set.contains(item) {
+            true
+        } else {
+            big_set.insert(item);
+            false
+        }
+    }
+
+    /// Returns the lengths of this set.
+    fn len(&self) -> usize {
+        self.borrow().len()
+    }
+}
+/// InteriorMutableSet which is able to insert elements in parallel
+pub struct ParallelSet<T>
+where
+    T: Hash,
+{
+    n_partitions: usize,
+    sets: Vec<Mutex<BigSet<T>>>,
+}
+
+impl<T> ParallelSet<T>
+where
+    T: Hash,
+{
+    /// Creates a new parallel set parititioning the data into this nuber of sets.
+    pub fn new(cache_size: usize, n_partitions: usize) -> Self {
+        assert!(n_partitions > 0, "Must have at least one partition.");
+        Self {
+            n_partitions,
+            sets: iter::repeat(())
+                .take(n_partitions)
+                .map(|_| Mutex::new(BigSet::new(cache_size / n_partitions)))
+                .collect(),
+        }
+    }
+}
+
+/// InteriorMutableSet which is able to insert elements in parallel
+impl<T> InteriorMutableSet<T> for ParallelSet<T>
+where
+    T: Hash,
+{
+    /// Inserts an item the set, returning true if the item had already been inserted.
+    fn insert_check(&self, item: &T) -> bool {
+        let partition = (hash(item) as usize) % self.n_partitions;
+        let mut set = self.sets[partition].lock().unwrap();
+        if set.contains(item) {
+            true
+        } else {
+            set.insert(item);
+            false
+        }
+    }
+
+    /// Returns the lengths of this set.
+    fn len(&self) -> usize {
+        // Hold all the locks at once
+        self.sets
+            .iter()
+            .map(|m| m.lock().unwrap())
+            .collect::<Vec<_>>()
+            .iter()
+            .map(|s| s.len())
+            .sum()
+    }
+}
+
 #[cfg(test)]
 pub mod test {
     use super::*;
@@ -316,5 +406,43 @@ pub mod test {
     #[test]
     pub fn test_partition_set() {
         test_hashed_item_set(&mut PartitionSet::new(3, 26, 0.5, 2));
+    }
+
+    #[test]
+    pub fn test_ref_cell_set() {
+        let set = RefCell::new(BigSet::new(25));
+        test_interior_mutable_set(set);
+    }
+
+    #[test]
+    pub fn test_parallel_set() {
+        let cache_size = 8;
+        let n_partitions = 4;
+        let set = ParallelSet::new(cache_size, n_partitions);
+        test_interior_mutable_set(set);
+    }
+
+    pub fn test_interior_mutable_set(set: impl InteriorMutableSet<usize>) {
+        let max_elts = 1028;
+        for i in (0..max_elts).step_by(4) {
+            assert_eq!(set.len(), i / 4);
+            assert!(!set.insert_check(&i));
+        }
+
+        for i in (0..max_elts).step_by(2) {
+            match i % 4 {
+                0 => assert!(set.insert_check(&i)),
+                _ => assert!(!set.insert_check(&i)),
+            }
+        }
+        assert_eq!(set.len(), max_elts / 2);
+
+        for i in 0..max_elts {
+            match i % 2 {
+                0 => assert!(set.insert_check(&i)),
+                _ => assert!(!set.insert_check(&i)),
+            }
+        }
+        assert_eq!(set.len(), max_elts);
     }
 }

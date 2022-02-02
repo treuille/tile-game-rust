@@ -154,13 +154,13 @@ pub mod test {
         }
         assert_eq!(stack.len(), n_elts);
 
-        // Test the rev_drain() method.
-        let elts_to_drain = n_elts / 2;
-        for (i, item) in stack.rev_drain().take(elts_to_drain).enumerate() {
-            assert_eq!(n_elts - 1 - i, item);
-        }
-        let n_elts = n_elts - elts_to_drain;
-        assert_eq!(stack.len(), n_elts);
+        // // Test the rev_drain() method.
+        // let elts_to_drain = n_elts / 2;
+        // for (i, item) in stack.rev_drain().take(elts_to_drain).enumerate() {
+        //     assert_eq!(n_elts - 1 - i, item);
+        // }
+        // let n_elts = n_elts - elts_to_drain;
+        // assert_eq!(stack.len(), n_elts);
 
         // Test the pop() method
         for i in (0..n_elts).rev() {
