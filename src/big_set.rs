@@ -338,6 +338,25 @@ where
                 .collect(),
         }
     }
+
+    /// Creates a new parallel set with relatively prime partitions sizes.
+    pub fn with_prime_caches(cache_size: usize, n_partitions: usize) -> Self {
+        assert!(n_partitions >= 1, "Must have at least one partition.");
+        assert!(n_partitions <= 4, "Cannot have more than four partitions");
+        let primes: &[usize] = &[3, 5, 7, 11][..n_partitions];
+        let prime_sum: usize = primes.iter().sum();
+        Self {
+            n_partitions,
+            sets: primes
+                .iter()
+                .map(|p| {
+                    let cache_size: usize = cache_size * p / prime_sum;
+                    println!("Creating a BigSet with cache size {}.", cache_size);
+                    Mutex::new(BigSet::new(cache_size))
+                })
+                .collect(),
+        }
+    }
 }
 
 /// InteriorMutableSet which is able to insert elements in parallel
