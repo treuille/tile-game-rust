@@ -4,9 +4,9 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
-use std::io;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
+use std::{io, mem};
 
 /// A set of items, stored by their hash values.
 pub trait HashedItemSet<T: Hash> {
@@ -66,6 +66,90 @@ impl<T: Hash> HashedItemSet<T> for LittleSet<T> {
     }
 }
 
+struct BigHashSet<T: Hash> {
+    /// The memmapped hashes
+    hashes: BigU64Array,
+
+    /// How many hashes are stored to disk.
+    stored_hashes: usize,
+
+    /// Maximum load
+    max_load: f64,
+
+    /// 0-sized variable that makes this type behave as if it
+    /// contained items of type T.
+    phantom: PhantomData<T>,
+}
+
+impl<T> BigHashSet<T>
+where
+    T: Hash,
+{
+    fn new(capacity: usize) -> Self {
+        assert!(capacity > 0, "Cannot have zero-capacity BigHashSet.");
+        BigHashSet {
+            hashes: BigU64Array::new_zeroed(capacity).unwrap(),
+            stored_hashes: 0,
+            max_load: 0.5,
+            phantom: PhantomData,
+        }
+    }
+
+    /// Inserts a item into this set.
+    fn insert_hash(&mut self, hash: u64) {
+        let max_elts = ((self.hashes.len() as f64) * self.max_load) as usize;
+        if self.stored_hashes + 1 > max_elts {
+            // We need to increase the length of the array and rehash everything.
+            println!(
+                "Have {} stored hashes in array of size {}.",
+                self.stored_hashes,
+                self.hashes.len(),
+            );
+            let mut new_self = Self::new(self.hashes.len() * 2);
+            self.hashes
+                .iter()
+                .filter(|&h| *h != 0)
+                .for_each(|h| new_self.insert_hash(*h));
+            println!("BEFORE");
+            println!("{:?}", self.hashes.deref());
+            println!("AFTER");
+            println!("{:?}", new_self.hashes.deref());
+            mem::swap(self, &mut new_self);
+            println!("NEW AFTER");
+            println!("{:?}", self.hashes.deref());
+        }
+        println!(
+            "NOW have {} stored hashes in array of size {}.",
+            self.stored_hashes,
+            self.hashes.len(),
+        );
+        self.hashes[self.stored_hashes] = 1;
+        self.stored_hashes += 1;
+        println!("{:?}", self.hashes.deref());
+    }
+}
+
+impl<T> HashedItemSet<T> for BigHashSet<T>
+where
+    T: Hash,
+{
+    /// Returns true if the set contains this item (up to hash collisions).
+    fn contains(&self, item: &T) -> bool {
+        let _hash = hash(item);
+        false
+    }
+
+    /// Inserts a item into this set.
+    fn insert(&mut self, item: &T) {
+        self.insert_hash(hash(item));
+    }
+
+    /// Returns the number of elements in this set.
+    fn len(&self) -> usize {
+        self.stored_hashes
+    }
+}
+
 /// A big array of u64s backed by a large memory-mapped temporary file.
 struct BigU64Array {
     /// The memory map itself.
@@ -88,6 +172,15 @@ impl BigU64Array {
             n_elts,
             array.filename.to_path_buf()
         );
+
+        Ok(array)
+    }
+
+    fn new_zeroed(n_elts: usize) -> io::Result<Self> {
+        let mut array = Self::new(n_elts)?;
+        for element in array.iter_mut() {
+            *element = 0;
+        }
         Ok(array)
     }
 }
@@ -111,6 +204,7 @@ impl DerefMut for BigU64Array {
         u64_array
     }
 }
+
 #[cfg(test)]
 pub mod test {
     use super::*;
@@ -130,7 +224,7 @@ pub mod test {
     }
 
     #[test]
-    pub fn test_little_set() {
-        test_hashed_item_set(&mut LittleSet::new());
+    pub fn test_big_hash_set() {
+        test_hashed_item_set(&mut BigHashSet::new(25));
     }
 }

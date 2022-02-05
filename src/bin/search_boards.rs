@@ -1,5 +1,3 @@
-use rayon::prelude::*;
-
 #[allow(unused_imports)]
 use tile_game::big_set::{HashedItemSet, LittleSet};
 
