@@ -110,19 +110,23 @@ where
                 .for_each(|h| new_self.insert_hash(*h));
             mem::swap(self, &mut new_self);
         }
-        // for i in 0..self.hashes.len() {
-        //     let index = (hash + i * i) % self.hashes.len();
-        //     println!("probing [{}] -> {}", index, self.hashes[index]);
-        //     if self.hashes[index] == 0 {
-        //     }
-        // }
-        self.hashes[self.stored_hashes] = 1;
+        let empty_index = self
+            .probe(hash)
+            .find(|i| self.hashes[*i] == 0)
+            .expect("Couldn't find an empty location.");
+        self.hashes[empty_index] = hash;
         self.stored_hashes += 1;
-        println!("{:?}", self.hashes.deref());
+        println!("INSERTED: {:?}", self.hashes.deref());
     }
 
     fn smallest_prime_larger_than(n: usize) -> usize {
         Primes::all().find(|p| p >= &n).unwrap()
+    }
+
+    /// Runs a quadratic probe through the hashtable indices
+    fn probe(&self, hash: u64) -> impl Iterator<Item = usize> + '_ {
+        let hash_len = self.hashes.len();
+        (0..hash_len).map(move |i| ((hash as usize) + i * i) % hash_len)
     }
 }
 
@@ -132,8 +136,17 @@ where
 {
     /// Returns true if the set contains this item (up to hash collisions).
     fn contains(&self, item: &T) -> bool {
-        let _hash = hash(item);
-        false
+        let hash = hash(item);
+        let result: Option<bool> = self.probe(hash).find_map(|i| {
+            let result: Option<bool> = match self.hashes[i] {
+                hash => Some(true),
+                0 => Some(false),
+                _ => None,
+            };
+            result
+        });
+        return result;
+        // return result.expect("Exhausted probes without finding the item.");
     }
 
     /// Inserts a item into this set.
