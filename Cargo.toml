@@ -12,6 +12,7 @@ memmap = ">=0.7.0"
 bincode = ">=1.3.3"
 serde = { version = "<=2.0", features = ["derive"] } 
 rayon = "<2.0"
+primal-sieve = ">=0.3.1"
 
 [lib]
 name="tile_game"

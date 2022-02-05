@@ -1,5 +1,6 @@
 use memmap::MmapMut;
 use mktemp::Temp;
+use primal_sieve::Primes;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
 use std::fs::OpenOptions;
@@ -86,8 +87,8 @@ where
     T: Hash,
 {
     fn new(capacity: usize) -> Self {
-        assert!(capacity > 0, "Cannot have zero-capacity BigHashSet.");
-        // TODO: Need to make this a prime capcity!! 
+        let prime_capacity = Self::smallest_prime_larger_than(capacity);
+        println!("Creating a BigHashSet with {} capacity.", prime_capacity);
         BigHashSet {
             hashes: BigU64Array::new_zeroed(capacity).unwrap(),
             stored_hashes: 0,
@@ -98,6 +99,7 @@ where
 
     /// Inserts a item into this set.
     fn insert_hash(&mut self, hash: u64) {
+        assert_ne!(hash, 0, "Cannot insert a hash of 0.");
         let max_elts = ((self.hashes.len() as f64) * self.max_load) as usize;
         if self.stored_hashes + 1 > max_elts {
             // We need to increase the length of the array and rehash everything.
@@ -108,10 +110,19 @@ where
                 .for_each(|h| new_self.insert_hash(*h));
             mem::swap(self, &mut new_self);
         }
-        for i in (0, 
+        // for i in 0..self.hashes.len() {
+        //     let index = (hash + i * i) % self.hashes.len();
+        //     println!("probing [{}] -> {}", index, self.hashes[index]);
+        //     if self.hashes[index] == 0 {
+        //     }
+        // }
         self.hashes[self.stored_hashes] = 1;
         self.stored_hashes += 1;
         println!("{:?}", self.hashes.deref());
+    }
+
+    fn smallest_prime_larger_than(n: usize) -> usize {
+        Primes::all().find(|p| p >= &n).unwrap()
     }
 }
 
