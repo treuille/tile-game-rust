@@ -87,6 +87,7 @@ where
 {
     fn new(capacity: usize) -> Self {
         assert!(capacity > 0, "Cannot have zero-capacity BigHashSet.");
+        // TODO: Need to make this a prime capcity!! 
         BigHashSet {
             hashes: BigU64Array::new_zeroed(capacity).unwrap(),
             stored_hashes: 0,
@@ -100,29 +101,14 @@ where
         let max_elts = ((self.hashes.len() as f64) * self.max_load) as usize;
         if self.stored_hashes + 1 > max_elts {
             // We need to increase the length of the array and rehash everything.
-            println!(
-                "Have {} stored hashes in array of size {}.",
-                self.stored_hashes,
-                self.hashes.len(),
-            );
             let mut new_self = Self::new(self.hashes.len() * 2);
             self.hashes
                 .iter()
                 .filter(|&h| *h != 0)
                 .for_each(|h| new_self.insert_hash(*h));
-            println!("BEFORE");
-            println!("{:?}", self.hashes.deref());
-            println!("AFTER");
-            println!("{:?}", new_self.hashes.deref());
             mem::swap(self, &mut new_self);
-            println!("NEW AFTER");
-            println!("{:?}", self.hashes.deref());
         }
-        println!(
-            "NOW have {} stored hashes in array of size {}.",
-            self.stored_hashes,
-            self.hashes.len(),
-        );
+        for i in (0, 
         self.hashes[self.stored_hashes] = 1;
         self.stored_hashes += 1;
         println!("{:?}", self.hashes.deref());
