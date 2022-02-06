@@ -1,12 +1,12 @@
 #[allow(unused_imports)]
-use tile_game::big_set::{HashedItemSet, LittleSet};
+use tile_game::big_set::{BigHashSet, HashedItemSet, LittleSet};
 
 use tile_game::big_stack::{BigStack, Stack};
 
 use tile_game::board::Board;
 
-use std::sync::{Arc, Mutex};
-use std::{iter, mem};
+// use std::sync::{Arc, Mutex};
+// use std::{iter, mem};
 
 fn factorial(x: usize) -> usize {
     (2..=x).fold(1, |x, y| x * y)
@@ -14,7 +14,7 @@ fn factorial(x: usize) -> usize {
 
 fn main() {
     // This the width and height of the tile game we're using.
-    let (w, h) = (3, 3);
+    let (w, h) = (3, 4);
     let n_elts = (w * h) as u8;
     let n_solns = factorial(w * h) / 2;
     println!("Board size: {w}x{h}");
@@ -37,7 +37,8 @@ fn find_all_boards_iteratively(board: Board, n_solns: usize) -> usize {
     let mut unprocessed_boards: BigStack<Board> = BigStack::new(1 << 25);
     unprocessed_boards.push(board.clone());
 
-    let mut all_boards = LittleSet::<Board>::new();
+    // let mut all_boards = LittleSet::<Board>::new();
+    let mut all_boards = BigHashSet::<Board>::new(n_solns);
     all_boards.insert(&board);
 
     while let Some(board) = unprocessed_boards.pop() {

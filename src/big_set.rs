@@ -67,7 +67,7 @@ impl<T: Hash> HashedItemSet<T> for LittleSet<T> {
     }
 }
 
-struct BigHashSet<T: Hash> {
+pub struct BigHashSet<T: Hash> {
     /// The memmapped hashes
     hashes: BigU64Array,
 
@@ -86,20 +86,20 @@ impl<T> BigHashSet<T>
 where
     T: Hash,
 {
-    fn new(capacity: usize) -> Self {
-        let prime_capacity = Self::smallest_prime_larger_than(capacity);
-        println!("Creating a BigHashSet with {} capacity.", prime_capacity);
+    pub fn new(n_elts: usize) -> Self {
+        let max_load = 0.5;
+        let capacity = ((n_elts as f64) / max_load) as usize;
+        let prime_capacity = Primes::all().find(|p| p >= &capacity).unwrap();
         BigHashSet {
-            hashes: BigU64Array::new_zeroed(capacity).unwrap(),
+            hashes: BigU64Array::new_zeroed(prime_capacity).unwrap(),
             stored_hashes: 0,
-            max_load: 0.5,
+            max_load,
             phantom: PhantomData,
         }
     }
 
     /// Inserts a item into this set.
     fn insert_hash(&mut self, hash: u64) {
-        assert_ne!(hash, 0, "Cannot insert a hash of 0.");
         let max_elts = ((self.hashes.len() as f64) * self.max_load) as usize;
         if self.stored_hashes + 1 > max_elts {
             // We need to increase the length of the array and rehash everything.
@@ -110,17 +110,14 @@ where
                 .for_each(|h| new_self.insert_hash(*h));
             mem::swap(self, &mut new_self);
         }
+
+        // Find an insert the item in the first empty index we find.
         let empty_index = self
             .probe(hash)
             .find(|i| self.hashes[*i] == 0)
             .expect("Couldn't find an empty location.");
         self.hashes[empty_index] = hash;
         self.stored_hashes += 1;
-        println!("INSERTED: {:?}", self.hashes.deref());
-    }
-
-    fn smallest_prime_larger_than(n: usize) -> usize {
-        Primes::all().find(|p| p >= &n).unwrap()
     }
 
     /// Runs a quadratic probe through the hashtable indices
@@ -136,17 +133,18 @@ where
 {
     /// Returns true if the set contains this item (up to hash collisions).
     fn contains(&self, item: &T) -> bool {
-        let hash = hash(item);
-        let result: Option<bool> = self.probe(hash).find_map(|i| {
-            let result: Option<bool> = match self.hashes[i] {
-                hash => Some(true),
-                0 => Some(false),
-                _ => None,
-            };
-            result
-        });
-        return result;
-        // return result.expect("Exhausted probes without finding the item.");
+        let hash: u64 = hash(item);
+        self.probe(hash)
+            .find_map(|i| {
+                if self.hashes[i] == hash {
+                    Some(true)
+                } else if self.hashes[i] == 0 {
+                    Some(false)
+                } else {
+                    None
+                }
+            })
+            .expect("Exhausted probe without finding the item.")
     }
 
     /// Inserts a item into this set.
