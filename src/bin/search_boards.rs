@@ -14,7 +14,7 @@ fn factorial(x: usize) -> usize {
 
 fn main() {
     // This the width and height of the tile game we're using.
-    let (w, h) = (3, 4);
+    let (w, h) = (3, 3);
     let n_elts = (w * h) as u8;
     let n_solns = factorial(w * h) / 2;
     println!("Board size: {w}x{h}");

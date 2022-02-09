@@ -1,14 +1,17 @@
-use rayon::prelude::*;
-use std::thread;
-use std::time::Duration;
+// use rayon::prelude::*;
+// use std::thread;
+// use std::time::Duration;
+
+use tile_game::big_set::{BigHashSet, HashedItemSet};
 
 fn main() {
-    println!("Hello, world.");
+    println!("Benchmarking the new hashtable");
 
-    let numbers: Vec<_> = (0..20).collect();
-    numbers.par_iter().for_each(|i| {
-        println!("{i}");
-        let one_second = Duration::from_secs(1);
-        thread::sleep(one_second);
-    });
+    let elts_to_insert = 100000000;
+    let mut set = BigHashSet::new(elts_to_insert);
+    for i in 0..elts_to_insert {
+        set.insert(&i);
+    }
+
+    println!("Inserted {elts_to_insert} items.");
 }
