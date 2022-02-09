@@ -86,8 +86,7 @@ impl<T> BigHashSet<T>
 where
     T: Hash,
 {
-    pub fn new(n_elts: usize) -> Self {
-        let max_load = 0.5;
+    pub fn new(n_elts: usize, max_load: f64) -> Self {
         let capacity = ((n_elts as f64) / max_load) as usize;
         let prime_capacity = Primes::all().find(|p| p >= &capacity).unwrap();
         BigHashSet {
@@ -103,7 +102,7 @@ where
         let max_elts = ((self.hashes.len() as f64) * self.max_load) as usize;
         if self.stored_hashes + 1 > max_elts {
             // We need to increase the length of the array and rehash everything.
-            let mut new_self = Self::new(self.hashes.len() * 2);
+            let mut new_self = Self::new(self.hashes.len() * 2, self.max_load);
             self.hashes
                 .iter()
                 .filter(|&h| *h != 0)
@@ -120,11 +119,40 @@ where
         self.stored_hashes += 1;
     }
 
+    // /// Runs a quadratic probe through the hashtable indices
+    // fn probe(&self, hash: u64) -> impl Iterator<Item = usize> + '_ {
+    //     let hash = usize::try_from(hash).unwrap();
+    //     let hash_len = self.hashes.len();
+    //     (0..hash_len).map(move |i| {
+    //         (match i % 2 {
+    //             0 => (hash + i * i / 4),
+    //             _ => usize::checked_sub(hash + hash_len, i * (i + 1) / 4).unwrap(),
+    //         }) % hash_len
+    //     })
+    // }
+
+    // /// Runs a quadratic probe through the hashtable indices
+    // fn probe(&self, hash: u64) -> impl Iterator<Item = usize> + '_ {
+    //     let hash = usize::try_from(hash).unwrap();
+    //     let hash_len = self.hashes.len();
+    //     (0..hash_len).map(move |i| (hash + i) % hash_len)
+    // }
+
     /// Runs a quadratic probe through the hashtable indices
     fn probe(&self, hash: u64) -> impl Iterator<Item = usize> + '_ {
+        let hash = usize::try_from(hash).unwrap();
         let hash_len = self.hashes.len();
-        (0..hash_len).map(move |i| ((hash as usize) + i * i) % hash_len)
+        (0..hash_len).map(move |i| match i % 2 {
+            0 => (hash + i / 2),
+            _ => usize::checked_sub(hash + hash_len, (i + 2) / 2).unwrap(),
+        } % hash_len)
     }
+
+    // /// Runs a quadratic probe through the hashtable indices
+    // fn probe(&self, hash: u64) -> impl Iterator<Item = usize> + '_ {
+    //     let hash_len = self.hashes.len();
+    //     (0..hash_len).map(move |i| ((hash as usize) + i * i) % hash_len)
+    // }
 }
 
 impl<T> HashedItemSet<T> for BigHashSet<T>
@@ -233,6 +261,6 @@ pub mod test {
 
     #[test]
     pub fn test_big_hash_set() {
-        test_hashed_item_set(&mut BigHashSet::new(25));
+        test_hashed_item_set(&mut BigHashSet::new(25, 0.5));
     }
 }

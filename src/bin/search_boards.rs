@@ -38,7 +38,8 @@ fn find_all_boards_iteratively(board: Board, n_solns: usize) -> usize {
     unprocessed_boards.push(board.clone());
 
     // let mut all_boards = LittleSet::<Board>::new();
-    let mut all_boards = BigHashSet::<Board>::new(n_solns);
+    let max_load = 0.5;
+    let mut all_boards = BigHashSet::<Board>::new(n_solns, max_load);
     all_boards.insert(&board);
 
     while let Some(board) = unprocessed_boards.pop() {
