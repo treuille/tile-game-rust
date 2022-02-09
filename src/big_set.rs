@@ -119,7 +119,7 @@ where
         self.stored_hashes += 1;
     }
 
-    // /// Runs a quadratic probe through the hashtable indices
+    // /// Runs an alternating quadratic probe through the hashtable indices
     // fn probe(&self, hash: u64) -> impl Iterator<Item = usize> + '_ {
     //     let hash = usize::try_from(hash).unwrap();
     //     let hash_len = self.hashes.len();
@@ -131,14 +131,14 @@ where
     //     })
     // }
 
-    // /// Runs a quadratic probe through the hashtable indices
+    // /// Runs a linear probe through the hashtable indices
     // fn probe(&self, hash: u64) -> impl Iterator<Item = usize> + '_ {
     //     let hash = usize::try_from(hash).unwrap();
     //     let hash_len = self.hashes.len();
     //     (0..hash_len).map(move |i| (hash + i) % hash_len)
     // }
 
-    /// Runs a quadratic probe through the hashtable indices
+    /// Runs an alternating quadratic probe through the hashtable indices
     fn probe(&self, hash: u64) -> impl Iterator<Item = usize> + '_ {
         let hash = usize::try_from(hash).unwrap();
         let hash_len = self.hashes.len();
